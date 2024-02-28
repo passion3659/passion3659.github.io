@@ -3,6 +3,10 @@ layout: post
 title:  "Pointnet review"
 date:   2024-02-21 16:21:44 +0900
 categories: pointnet, 3d 
+# image:
+#     path: /images/figure.jpg
+#     thumbnail: /images/pointnet++/화이트.jpg
+#     caption: /images/pointnet++/그레이.jpg
 ---
 # PointNet++: Deep Hierarchical Feature Learning on Point Sets in a Metric Space
 
