@@ -4,6 +4,7 @@ title:  "Unsupervised Scalable Representation Learning review"
 date:   2024-03-1 15:13:23 +0900
 categories:
   - Time Series
+  - Paper Review
 ---
 # "Unsupervised Scalable Representation Learning for Multivariate Time Series"
 
@@ -11,9 +12,9 @@ categories:
 
 {% include toc %}
 
-간단하게 요약하자면 triplet loss를 쓰고 self supervised 하기 위한 positive negative sampling을 anchor를 기준으로 안은 positive 다른 time series에서 얻은건 negative로 정의한 논문으로 논문 리뷰를 시작하겠습니다.
+간단하게 요약하자면 triplet loss를 쓰고 self supervised 하기 위한 positive negative sampling을 anchor를 기준으로 안은 positive 다른 time series에서 얻은건 negative로 정의한 논문으로입니다. 논문 리뷰를 시작하겠습니다.
 
-# Introduction
+# &lt; Introduction &gt;
 
 이 연구에서는 시계열에 대한unsupervised general-purpose representation learning이라는 주제를 조사합니다. 자연어 처리(Young et al., 2018) 또는 동영상(Denton & Birodkar, 2017)과 같은 분야에서 representation learning에 대한 연구가 증가하고 있음에도 불구하고, 비시간적 데이터에 대한 구조적 가정 없이 시계열에 대한 범용 표현 학습을 명시적으로 다루는 논문은 거의 없습니다. 이 문제는 여러 가지 이유로 실제로 어려운 문제입니다.
 
@@ -25,7 +26,7 @@ categories:
 
 따라서 본 논문에서는 연구된 시계열의 길이가 다양하고 잠재적으로 긴 문제에 부합하는 다변량 시계열에 대한 general-purpose representations을 학습하는 unsupervised 방법을 제안합니다. 이를 위해 우리는  scalable encoder를 훈련하는 **새로운 unsupervised loss를 소개**한다. 이 scalable encoder는 dilated convolutions이 포함된 deep convolutional nerual network의 모양을 가지고 fixed-length vector representations을 출력한다.  이 손실은 time-based negative sampling을 사용하는 **triplet loss로 구축**되어 길이가 같지 않은 시계열에 대한 인코더의 복원력을 활용합니다. 우리가 아는 한, 이것은 **시계열 관련 문헌에서 완전히 최초의 fully unsupervised triplet loss**입니다. 다양한 데이터 세트에서 학습된 표현의 품질을 평가하여 보편성을 보장합니다. 특히, UCR 저장소에 수집된 시계열 문헌의 표준 데이터 세트에 대한 분류 작업에 우리의 표현을 어떻게 사용할 수 있는지 테스트합니다(Dau et al., 2018). 우리는 우리의 표현이 일반적이고 전이 가능하며, 우리의 방법이 동시 비지도 방법보다 성능이 뛰어나고 심지어 non-ensemble supervised classification techniques의 최신 기술와도 일치한다는 것을 보여줍니다. 또한, UCR 시계열은 독점적으로 단변량이고 대부분 짧기 때문에, 우리는 최근 UEA 다변량 시계열 저장소(Bagnall et al., 2018)와 매우 긴 시계열을 포함한 실제 데이터 세트에 대한 표현을 평가하여 분류를 넘어 다양한 작업에 대한 확장성, 성능 및 일반화 능력을 입증합니다. 이 논문은 다음과 같이 구성되어 있습니다. 섹션 2에서는 시계열에 대한 비지도 표현 학습, 삼중 손실, 딥 아키텍처에 관한 선행 연구를 개괄적으로 설명합니다. 섹션 3에서는 인코더의 비지도 학습에 대해 설명하고, 섹션 4에서는 후자의 아키텍처에 대해 자세히 설명합니다. 마지막으로 섹션 5에서는 방법을 평가하기 위해 수행한 실험 결과를 제공합니다.
 
-# Related Work
+# &lt; Related Work &gt;
 
 <div style="font-size: 20px; margin: 5px 0;"><strong>Unsupervised learning for time series</strong><br></div>
 우리가 아는 한, 비디오나 고차원 데이터를 다루는 연구(Srivastava 외., 2015; Denton & Birodkar, 2017; Villegas 외., 2017; Oord 외., 2018)를 제외하고 시계열에 대한 unsupervised representation learning을 다룬 최근 연구는 거의 없습니다. Fortuin 등(2019)은 시계열의 변화를 잘 나타내는 시계열의 시간적 표현을 학습함으로써 이 작업과 유사하지만 다른 문제를 다루고 있습니다. Hyvarinen & Morioka(2016)는 시계열의 균등한 크기의 세분화에 대한 표현을 학습하여 이러한 표현에서 이러한 세분화를 구별하는 방법을 학습합니다. Lei 등(2017)은 학습된 표현 간의 거리가 시계열 간의 표준 거리(동적 시간 왜곡, DTW)를 모방하도록 설계된 비지도 방법을 노출합니다. (2017)은 인코더를 순환 신경망으로 설계하고, 디코더와 함께 학습된 표현으로부터 입력 시계열을 재구성하기 위해 시퀀스 간 모델로 공동 훈련합니다. 마지막으로, Wu 등(2018a)은 신중하게 설계되고 효율적인 커널의 근사치에서 생성된 특징 임베딩을 계산합니다. 그러나 이러한 방법은 either are not scalable nor suited to long time series(순환 네트워크의 순차적 특성 또는 입력 길이에 대한 이차적 복잡성을 가진 DTW 사용으로 인해), 표준 데이터 세트가 없거나 매우 적고 공개적으로 사용 가능한 코드가 없는 상태에서 테스트되거나 학습된 표현의 품질을 평가하기에 충분한 비교를 제공하지 못합니다. 확장 가능한 모델과 광범위한 분석은 이러한 방법을 능가할 뿐만 아니라 이러한 문제를 극복하는 것을 목표로 합니다.
@@ -36,7 +37,7 @@ categories:
 <div style="font-size: 20px; margin: 5px 0;"><strong>Convolutional networks for time series</strong><br></div>
 심층 컨볼루션 신경망은 최근 시계열 분류 작업에 성공적으로 적용되어 경쟁력 있는 성능을 보여주고 있습니다(Cui et al., 2016; Wang et al., 2017). 오디오 생성에 널리 사용되는 Dilated convolutions은 WaveNet(Oord et al., 2016)에서 성능을 개선하는 데 사용되었으며, 우리에게 영감을 준 아키텍처를 사용하여 시계열 예측을 위한 시퀀스 간 모델로서도 우수한 성능을 보였습니다(Bai et al., 2018). 이러한 연구는 특히 Dilated convolutions이 효율성과 예측 성능 측면에서 순환 신경망보다 우수한 순차적 작업용 네트워크를 구축하는 데 도움이 된다는 것을 보여줍니다.
 
-# Unsupervised Training
+# &lt; Unsupervised Training &gt;
 
 Malhotra et al. (2017)가 수행한 decoder와 공동으로 학습할 필요성을 피하고 encoder-only arichitecture인 autoencoder-based standard representation learning methods을 학습하려고 하는데 이는 더 큰 계산 비용을 유발하기 떄문이다. 이를 위해, 저희는 성공적인 고전적인 단어 표현 학습 방법인 word2vec(Mikolov et al., 2013)에서 영감을 받아 시계열에 대한 새로운 triplet loss을 도입했습니다. 제안된 triplet loss은 original time-based sampling strategies을 사용하여 레이블이 지정되지 않은 데이터에 대한 학습의 어려움을 극복합니다. 우리가 아는 한, 이 연구는 시계열 문헌에서 완전한 비지도 환경에서 삼중 손실에 의존하는 최초의 연구입니다. 
 
@@ -52,9 +53,9 @@ word2vec의 cbow모델에서 가정하는 것은 두가지 fold가 있다. The r
 
 ![image](https://github.com/passion3659/passion3659.github.io/assets/89252263/c54a8735-64ab-4151-8973-25475acfa66c)
 
-이 시간 기반 삼중 손실은 선택한 인코더의 기능을 활용하여 다음과 같이 취할 수 있다는 점을 강조합니다. 입력 시계열을 취할 수 있다는 점을 강조합니다. 다양한 입력 길이 범위에서 인코더를 훈련함으로써 입력 길이의 범위에서 1부터 훈련 세트에서 가장 긴 시계열의 길이까지 다양한 입력 길이에 대해 인코더를 훈련시킴으로써 의미 있고 입력 길이에 관계없이 전달 가능한 표현을 출력할 수 있습니다(섹션 5 참조). 이 훈련 절차는 긴 시계열에 대해 실행할 수 있을 만큼 효율적이라는 점에서 흥미롭습니다. (섹션 5 참조) 확장 가능한 인코더(섹션 4 참조) 덕분에 디코더가 필요 없는 설계와 손실의 분리 가능성 덕분에 손실의 분리 가능성 덕분에 메모리를 절약하기 위해 용어당 역전파를 수행할 수 있습니다.3
+이 시간 기반 삼중 손실은 선택한 인코더의 기능을 활용하여 다음과 같이 취할 수 있다는 점을 강조합니다. 입력 시계열을 취할 수 있다는 점을 강조합니다. 다양한 입력 길이 범위에서 인코더를 훈련함으로써 입력 길이의 범위에서 1부터 훈련 세트에서 가장 긴 시계열의 길이까지 다양한 입력 길이에 대해 인코더를 훈련시킴으로써 의미 있고 입력 길이에 관계없이 전달 가능한 표현을 출력할 수 있습니다(섹션 5 참조). 이 훈련 절차는 긴 시계열에 대해 실행할 수 있을 만큼 효율적이라는 점에서 흥미롭습니다. (섹션 5 참조) 확장 가능한 인코더(섹션 4 참조) 덕분에 디코더가 필요 없는 설계와 손실의 분리 가능성 덕분에 손실의 분리 가능성 덕분에 메모리를 절약하기 위해 용어당 역전파를 수행할 수 있습니다.
 
-#  Encoder Architectur
+#  &lt; Encoder Architectur &gt;
 
 이 섹션에서는 시계열에서 관련 정보를 추출해야 하고, 학습과 테스트 모두에서 시간 및 메모리 효율적이어야 하며, 가변 길이 입력을 허용해야 한다는 세 가지 요구 사항에 따라 선택한 인코더 아키텍처에 대해 설명하고 제시합니다.
 
@@ -64,7 +65,7 @@ word2vec의 cbow모델에서 가정하는 것은 두가지 fold가 있다. The r
 
 (2018)에서 영감을 받아 인과적 컨볼루션, 가중치 정규화(Salimans & Kingma, 2016), 누수 ReLU 및 잔여 연결의 조합으로 네트워크의 각 계층을 구축합니다(그림 2b 참조). 이러한 각 레이어에는 기하급수적으로 증가하는 확장 매개변수(i번째 레이어의 경우 2 i)가 주어집니다. 그런 다음 이 인과 네트워크의 출력은 시간 차원을 압축하고 모든 시간 정보를 고정 크기 벡터로 집계하는 글로벌 최대 풀링 레이어에 주어집니다(전체 컨볼루션을 사용하는 감독 환경에서 Wang 등(2017)이 제안한 대로). 이 벡터의 선형 변환은 입력 길이, 크기와 무관하게 고정된 인코더의 출력이 됩니다.
 
-# Experimental Results
+# &lt; Experimental Results &gt;
 
 이 섹션에서는 학습된 표현의 관련성을 조사하기 위해 수행한 실험을 검토합니다. 이러한 실험에 해당하는 코드는 보충 자료에 첨부되어 있으며 공개적으로 사용할 수 있습니다.4 전체 학습 과정과 하이퍼파라미터 선택은 보충 자료의 섹션 S1 및 S2에 자세히 설명되어 있습니다. 구현에는 Python 3을 사용했으며, 신경망에는 PyTorch 0.4.1(Paszke et al., 2017)을, SVM에는 scikit-learn(Pedregosa et al., 2011)을 사용했습니다. 각 인코더는 달리 명시되지 않는 한, CUDA 9.0이 탑재된 단일 엔비디아 타이탄 Xp GPU에서 Adam 옵티마이저(Kingma & Ba, 2015)를 사용하여 훈련되었습니다. Selecting hyperparameters for an unsupervised method is challenging since the plurality of downstream tasks is usually supervised. 따라서 Wu 등(2018a)과 마찬가지로 고려되는 각 데이터 세트 아카이브에 대해 다운스트림 작업에 관계없이 단일 하이퍼파라미터 세트를 선택합니다. 또한, 우리는 TimeNet과 같은 다른 비지도 작업과 달리 어떤 작업에 대해서도 비지도 인코더 아키텍처 및 훈련 파라미터의 하이퍼파라미터 최적화를 수행하지 않는다는 점을 강조합니다(Malhotra et al., 2017). 특히 분류 작업의 경우 인코더 훈련 중에 라벨을 사용하지 않았습니다.
 
@@ -99,7 +100,7 @@ K가 성능에 큰 영향을 미치므로, 서로 다른 값의 K로 훈련된 �
 <div style="font-size: 20px; margin: 5px 0;"><strong>Evaluation on Long Time Series</strong><br></div>
 회귀 작업에 대한 라벨링이 없는 긴 시계열에 대한 방법의 적용 가능성과 확장성을 보여줌으로써 산업 응용 분야에 해당할 수 있으며, 데이터 세트가 대부분 짧은 시계열을 포함하는 UCR 및 UEA 아카이브에서 수행한 테스트를 보완할 수 있습니다
 
-# conclusion
+# &lt; conclusion &gt;
 
 확장 가능하고 고품질의 사용하기 쉬운 임베딩을 생성하는 시계열에 대한 비지도 표현 학습 방법을 제시합니다. 이 방법은 가변 길이 입력을 허용하는 확장 컨볼루션으로 구성된 인코더로 생성되며, 시계열에 대해 새로운 시간 기반 네거티브 샘플링을 사용하여 효율적인 삼중 손실로 훈련됩니다. 실험을 통해 이러한 표현은 보편적이며 최첨단 성능을 달성하는 분류 및 회귀와 같은 다양한 작업에 쉽고 효율적으로 사용할 수 있음을 보여주었습니다.
 
