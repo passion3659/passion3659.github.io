@@ -61,39 +61,39 @@ ex) 쉽게 설명하자면 여러 개의 의자가 포함된 3D 환경을 생각
 
 # &lt; Related Work &gt;
 
-**3D visual grounding**
+<div style="font-size: 20px; margin: 5px 0;"><strong>3D visual grounding</strong><br></div>
 
 3D visual grounding은 이미지에 대한 언어적 설명을 해당 이미지의 특정 객체에 매핑하는 2D 시각적 정합의 3D 버전이다. 포인트 클라우드 형태의 3D 장면을 입력으로 사용하며, 설명을 3D에서 언급된 객체에 찾는 것을 목표로 한다. 
 
-**3D-language tasks** : 3D dense captioning [14], [15] 그리고 grounding spatial relations (instead of individual objects) in 3D [16]가 있다. 
+3D-language tasks : 3D dense captioning [14], [15] 그리고 grounding spatial relations (instead of individual objects) in 3D [16]가 있다. 
 
-**주목할 만한 초기 작업** : NYU Depth-v2 데이터셋을 사용하여 3D 장면과 그 설명 사이의 관계를 공동으로 추론하는 방법을 탐구했다.
+주목할 만한 초기 작업 : NYU Depth-v2 데이터셋을 사용하여 3D 장면과 그 설명 사이의 관계를 공동으로 추론하는 방법을 탐구했다.
 
 object proposal 모듈과 fusion 모듈에서 attetion mecahinism을 이용해 시도[7]되었는데 본 논문은 이를 활용해 개선한 융합 방식을 제안한다. 개선 방식은 위에 있는 3개의 contribution이다.
 
 그리고 전의 연구와 접근방식을 비교해서 정리하면 다음과 같다. 
 
 - global attention과 local attetion
-    - **이전 연구(Zhao 등 [7])**: 트랜스포머 디코더 아키텍처를 사용하여 객체 간 정보 라우팅에global attention를 의존하는 fusion을 구현한다.
-    - **본 논문 접근 방식**: 객체 간 공간적 관계를 더 명확하게 구별하기 위해 spherical attention masks 방식을 통해 지역성을 명시적으로 유도한다.
-- local attetion**의 구현**:
-    - **Chen 등 [8]**: 3D 장면을 거친 보크셀로 나누고 각 보크셀 내의 다양한 시각적 임베딩 간 주의를 제한하여 local attetion를 구현한다.
-    - **본 논문 접근 방식**: spherical attention masks를 사용하여 객체의 중심에서 등방성 방식으로 지역성을 구현한다.
-- **시점 의존성**:
-    - **MVT-3DVG [19]**: 입력 3D 장면에 회전 증강을 적용하여 데이터 기반 방식으로 시각 기반 객체 임베딩의 시점 민감성을 해결한다.
-    - **본 논문 접근 방식**: 그라운딩 모델의 이미 큰 3D 입력을 늘리는 대신, 시각 토큰에 추가적인 카메라 시점 토큰을 포함시켜 fusion에 시점 민감성을 주입한다.
-- **시점 정보의 효과**:
-    - **[20]의 실증적 발견**: Nr3D 장면에서 시점 의존적 설명을 가진 3D 객체 식별 정확도에 대략적인 시점 정보가 성능을 올려준다.
-    - **본 논문 접근 방식**: ScanRefer 데이터의 정확한 주석을 통해 시점을 학습하고, 이 데이터에서 풍부한 시점 의존적 설명을 활용한다.
+    - 이전 연구: 트랜스포머 디코더 아키텍처를 사용하여 객체 간 정보 라우팅에global attention를 의존하는 fusion을 구현한다.
+    - 본 논문 접근 방식: 객체 간 공간적 관계를 더 명확하게 구별하기 위해 spherical attention masks 방식을 통해 지역성을 명시적으로 유도한다.
+- local attetion의 구현:
+    - [8]: 3D 장면을 거친 보크셀로 나누고 각 보크셀 내의 다양한 시각적 임베딩 간 주의를 제한하여 local attetion를 구현한다.
+    - 본 논문 접근 방식: spherical attention masks를 사용하여 객체의 중심에서 등방성 방식으로 지역성을 구현한다.
+- 시점 의존성:
+    - MVT-3DVG [19]: 입력 3D 장면에 회전 증강을 적용하여 데이터 기반 방식으로 시각 기반 객체 임베딩의 시점 민감성을 해결한다.
+    - 본 논문 접근 방식: 그라운딩 모델의 이미 큰 3D 입력을 늘리는 대신, 시각 토큰에 추가적인 카메라 시점 토큰을 포함시켜 fusion에 시점 민감성을 주입한다.
+- 시점 정보의 효과:
+    - [20]의 실증적 발견: Nr3D 장면에서 시점 의존적 설명을 가진 3D 객체 식별 정확도에 대략적인 시점 정보가 성능을 올려준다.
+    - 본 논문 접근 방식: ScanRefer 데이터의 정확한 주석을 통해 시점을 학습하고, 이 데이터에서 풍부한 시점 의존적 설명을 활용한다.
 
-**Dense 3D visual grounding**
+<div style="font-size: 20px; margin: 5px 0;"><strong>Dense 3D visual grounding</strong><br></div>
 이건 sementic segementation이라고 보면 되는데 당연히 3D는 훨씬 덜 탐구되었다. 기존 연구와 본 논문 접근 방식에 대해서 보겠다.
 
 - 기존 연구
     - [9] : 인스턴스 임베딩과 단어 임베딩 간의 fusion을 그래프 신경망을 사용하여 수행한다.
     - [10] : 전역 문장 임베딩만을 입력으로 받아, 인스턴스 임베딩이 기하학적 및 외형적 특징에 대한 구체적인 정보를 가진 개별 단어에 주의를 기울일 수 없게 한다.
-- **본 논문 접근 방식**
-    - **인스턴스 후보 추출 과정에서 생산된 semantic 인스턴스 특성은 [10]에서는 인스턴스 임베딩 추출을 위한 후속 과정에서 버려진다.** 반면에, 본 논문은 이러한 의미론적 특성을 처음부터 끝까지(end-to-end) 학습하여, 정합과 분할 정확도에 대해 구별력 있는 인스턴스 임베딩 생성을 위한 최적화를 모두 수행한다.
+- 본 논문 접근 방식
+    - 인스턴스 후보 추출 과정에서 생산된 semantic 인스턴스 특성은 [10]에서는 인스턴스 임베딩 추출을 위한 후속 과정에서 버려진다. 반면에, 본 논문은 이러한 의미론적 특성을 처음부터 끝까지(end-to-end) 학습하여, 정합과 분할 정확도에 대해 구별력 있는 인스턴스 임베딩 생성을 위한 최적화를 모두 수행한다.
 
 # &lt; METHOD &gt;
 
@@ -105,8 +105,7 @@ object proposal 모듈과 fusion 모듈에서 attetion mecahinism을 이용해 �
 
 ## **Kernel-Based 3D Instance Segmentation**
 
-**feature extraction**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>feature extraction</strong><br></div>
 그림과 같이 UNet을 backbone으로 사용해서 point를 처리하는 구조를 가진다. 이때 두개의 loss를 이용하는데 sementic loss와 offset loss이다. semantic loss는 UNet에서 나온 값과 실제 semantic label을 비교하는 loss이고 offset loss는 instance center에서의 거리를 ground truth와 pred value와 비교하는 값이다. 수식은 아래와 같다. 
 
 $$
@@ -121,8 +120,7 @@ L_{off} = L_1(x, \hat{x})
 \end{equation*}
 $$
 
-**Candidate generation**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>Candidate generation</strong><br></div>
 Unet을 거쳐서 나온feature들을 MLP를 통과시켜서 centroid map h를 만든다. centorid map은 아래의 loss에 의해 supervised되어서 만들어진다. p는 indicator함수로써 instnace라고 속할때 1의 값을 가진다. 
 
 $$
@@ -147,8 +145,7 @@ L_{can} = L_{sem} + L_{off} + L_{cen} + L_{agg}
 \end{equation*}
 $$
 
-**mask generation**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>mask generation</strong><br></div>
 마스크는 segmentation에서 중요한 역할을 하는데 후보들이 객체가 아니라고 판단되면 0으로 loss 계산에서 제외시켜줘야하기 때문이다. 이 mask도 threshold에 의해 결정되는데 본 논문에서는 IoUrk 0.25가 넘으면 객체라고 판단한다. 그럼 이 threshold에 의해서 생긴 0과 1도 label이 되어서 학습이 되는데 DyCo3d 방법을 따라 동적 컨볼루션을 사용하여 최종 인스턴스 마스크와 계산이 되며 loss는 다음과 같다. 
 
 $$
@@ -175,8 +172,7 @@ $$
 
 그러나 instance segmentation은 3D 실내 측위에서 3D object detection보다 낫지는 않더라도 동등한 성능을 보이지만, 고밀도 커널 기반 모델은 동일한 semantic class의 인스턴스 간 잠재 공간에서 분리 가능성이 제한적인 것으로 나타난다. 이를 해결하기 위해 (i) 인스턴스 간 관계 단서를 명확히 하고, (ii) 잠재적 표현에서 더 나은 분리 가능성을 유도하기 위한 훈련을 지원하며, (iii) 센서 위치를 추론하여 뷰 의존적 설명을 해결하는 세 가지 모듈을 제안한다.
 
-**Bottom-up attentive fusion (BAF)**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>Bottom-up attentive fusion (BAF)</strong><br></div>
 자연어 프롬포트를 생각할 때 예를들어 “캐비닛 옆에 있는 의자”이면 의자라는 객체를 찾을 때 캐비닛의 정보를 이용해 찾는것이라 local한 정보로 찾는다고 볼 수 있다. 그래서 Bottom-up attentive fusion 방식을 이용한다고 본 논문은 제안하는데 구조는 다음 그림과 같다. 
 
 ![image](https://github.com/passion3659/2023_Crime_Safety_Data_Analysis_Competition/assets/89252263/5a0129c0-bef4-4670-b0f9-cc82b6a643f9)
@@ -197,8 +193,7 @@ $$
 
 $r_l$는 거리인데 두개의 후보 $r_l$사이  거리가 $r_l$보다 작으면 마스크 $M_l(i,j)$는 0을 취하며 attention이 계산되고 그렇지않으면 음의 무한대를 가져서 attention 계산에서 제외된다. 그리고 cross-attention과 feed-forward layer를 통해서 instance token과 word embedding을 융합한다.  종 인스턴스 임베딩을 생성하기 위해, 트랜스포머 디코더 블록을 여러 번 반복 적용하며, 각 반복마다 마스킹 반경 $r_l$을 증가시키는 방식으로 작동한다. mask도 supervised로 선택되는데 이때 loss는 cross entropy loss이다.
 
-**Inducing separation via contrastive learning**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>Inducing separation via contrastive learning</strong><br></div>
 $$
 \begin{equation*}
 L_{\text{con}}(e_s, e_i) = -\log \frac{\exp(d(e_s, e_{i,k+}) / \tau)}{\sum_k \exp(d(e_s, e_{i,k}) / \tau)}
@@ -207,8 +202,7 @@ $$
 
 $e_s$는 문장 임베딩, $e_i$는 인스턴스 임베딩, $d()$는 코사인 유사도, $\tau$는 온도 매개변수를 나타내는데 이 손실 함수는 word embedding과 instance embedding 사이의 구분하기 위함이다. 문장 embedding과 일치하는 인스턴스 벡터는 긍정적인 샘플로 취급되어 서로 가까워지도록 유도되며, 나머지 인스턴스와의 쌍은 부정적인 샘플로 취급되어 서로 멀어지도록 유도된다. 이 방식은 반복적인 인스턴스 매핑 간의 모호성을 줄이고, 다중 인스턴스 참조 상황에서의 지역화를 돕기 위한 일반적인 솔루션을 제공한다. 
 
-**Global camera token (GCT)**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>Global camera token (GCT)</strong><br></div>
 3D의 입장에서 물체를 바라볼 때 우리는 관점에 따라 방향이 달라진다. 그래서 카메라가 보고있는 위치와 방향의 정보를 token으로 넣어서 임베딩을 생성한다. 좀 어려운 말로 시점 의존전 참조를 해결한다고 말할수 있다. 카메라 토큰에 대한 마스킹 값은 모든 인스턴스 *i*에 대해 0으로 설정되어, 모든 레이어에서 카메라 token이 attention계산을 하도록 한다. 카메라 토큰의 출력은 주석 과정에서 사용된 카메라 위치와 비교하여 L2 손실을 통해 supervised된다. 이는 모델이 카메라의 관점을 학습하고 이를 바탕으로 객체를 더 정확히 지역화할 수 있도록 돕는다. 카메라 토큰에 대한 마스킹 값은 아래와 같이 정의한다. 
 
 $$
