@@ -213,8 +213,7 @@ $$
 
 800개의 ScanNet 장면[6]에서 11,046개의 오브젝트에 대한 51,583개의 설명을 제공하는 ScanRefer 데이터세트[1]에서 실험을 수행한다. Hyperparameter는 다음과 같다. 
 
-**Implementation details**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>Implementation details</strong><br></div>
 1. 3D Unet 백본을 위한 보켈 크기(Voxel Size): 2cm
 2. 자연어 처리를 위한 MPNet 토크나이저와 사전 훈련된 모델
 3. 단어 임베딩 추출 전 물체명사를 무작위로 마스킹할 확률: 0.5
@@ -233,14 +232,12 @@ $$
 16. 학습률(Learning Rate): 3 · 10−4
 17. 사용된 하드웨어: Nvidia RTX 3090 GPU
 
-**Results**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>Results</strong><br></div>
 ![image](https://github.com/passion3659/2023_Crime_Safety_Data_Analysis_Competition/assets/89252263/f7ff3e35-781b-482e-ba5a-1ed956ee05b0)
 
 전반적으로 성능이 매우 향상했다고 보고한다. 
 
-**ablation study**
-
+<div style="font-size: 20px; margin: 5px 0;"><strong>ablation study</strong><br></div>
 task가 데이터셋이 하나밖에 없어서 다른 이것저것 실험을 많이 했는데 BAF, contrast learning, GCT를 하고 안하고의 성능은 다음과 같다. 
 
 ![image](https://github.com/passion3659/2023_Crime_Safety_Data_Analysis_Competition/assets/89252263/266fd34a-4f75-408f-bfba-225e9fa4812b)
