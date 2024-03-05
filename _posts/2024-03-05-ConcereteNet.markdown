@@ -110,14 +110,15 @@ object proposal 모듈과 fusion 모듈에서 attetion mecahinism을 이용해 �
 그림과 같이 UNet을 backbone으로 사용해서 point를 처리하는 구조를 가진다. 이때 두개의 loss를 이용하는데 sementic loss와 offset loss이다. semantic loss는 UNet에서 나온 값과 실제 semantic label을 비교하는 loss이고 offset loss는 instance center에서의 거리를 ground truth와 pred value와 비교하는 값이다. 수식은 아래와 같다. 
 
 $$
-\begin{equation}
+\begin{equation*}
 L_{sem} = H(s, \hat{s})
-\end{equation}
+\end{equation*}
 $$
 
 $$
+\begin{equation*}
 L_{off} = L_1(x, \hat{x})
-
+\end{equation*}
 $$
 
 **Candidate generation**
@@ -125,20 +126,25 @@ $$
 Unet을 거쳐서 나온feature들을 MLP를 통과시켜서 centroid map h를 만든다. centorid map은 아래의 loss에 의해 supervised되어서 만들어진다. p는 indicator함수로써 instnace라고 속할때 1의 값을 가진다. 
 
 $$
+\begin{equation*}
 L_{cen} = \frac{1}{\sum_{i=1}^{N} 1(p_i)} \sum_{i=1}^{N} | h_i - \exp \left( -\frac{\gamma \| x_i \|^2}{b_i^2} \right) |
+\end{equation*}
 $$
 
 예측된 히트맵에서 local normalized non-maximum suppression (LN-NMS)을 통해 후보를 생성합니다. 이때의 loss는 다음과 같고 a hat이 ground truth인 centorid map이며 다음 loss에 의해 supervised 학습된다.
 
 $$
+\begin{equation*}
 L_{agg} = L_1(a, \hat{a})
-
+\end{equation*}
 $$
 
  그렇게 해서 나오는 후보들의 최종 loss는 위 loss의 합으로 다음과 같다. 
 
 $$
+\begin{equation*}
 L_{can} = L_{sem} + L_{off} + L_{cen} + L_{agg}
+\end{equation*}
 $$
 
 **mask generation**
@@ -146,7 +152,9 @@ $$
 마스크는 segmentation에서 중요한 역할을 하는데 후보들이 객체가 아니라고 판단되면 0으로 loss 계산에서 제외시켜줘야하기 때문이다. 이 mask도 threshold에 의해 결정되는데 본 논문에서는 IoUrk 0.25가 넘으면 객체라고 판단한다. 그럼 이 threshold에 의해서 생긴 0과 1도 label이 되어서 학습이 되는데 DyCo3d 방법을 따라 동적 컨볼루션을 사용하여 최종 인스턴스 마스크와 계산이 되며 loss는 다음과 같다. 
 
 $$
+\begin{equation*}
 L_{mask} = H_b(z, \hat{z}) + DICE(z, \hat{z})
+\end{equation*}
 $$
 
 ## Encoding Language Cues
@@ -160,7 +168,9 @@ $$
 일반적으로는 후보들이 있으면 feature를 fusion해서 나온 확률값으로 선택을 하는 메커니즘을 거치는데 이 fusion은 보통 MLP로 사용하였다. 하지만 최근에는 트랜스포머 아키텍쳐를 사용해 fuse를 보통 한다. 다음 공식으로 하는데 transformer를 공부하면 공식은 익숙할것이다.(모른다면 “구글 bert의 정석” 책으로 공부 강추!) 
 
 $$
+\begin{equation*}
 f_l = \text{softmax}(qk_l^T)v_l + f_{l-1}
+\end{equation*}
 $$
 
 그러나 instance segmentation은 3D 실내 측위에서 3D object detection보다 낫지는 않더라도 동등한 성능을 보이지만, 고밀도 커널 기반 모델은 동일한 semantic class의 인스턴스 간 잠재 공간에서 분리 가능성이 제한적인 것으로 나타난다. 이를 해결하기 위해 (i) 인스턴스 간 관계 단서를 명확히 하고, (ii) 잠재적 표현에서 더 나은 분리 가능성을 유도하기 위한 훈련을 지원하며, (iii) 센서 위치를 추론하여 뷰 의존적 설명을 해결하는 세 가지 모듈을 제안한다.
@@ -174,11 +184,15 @@ $$
 BAF(Bottom-Up Attentive Fusion module)에서 트랜스포머 인코더 블록을 사용하는데 이때 localized self-attention로 모델링한다. 다음 공식을 따르는데 
 
 $$
+\begin{equation*}
 f_l = \text{softmax}(M_l + qk_l^T)v_l + f_{l-1}
+\end{equation*}
 $$
 
 $$
+\begin{equation*}
 M_l(i, j) = \begin{cases} 0, & \text{if } ||o_i - o_j|| < r_l \\ -\infty, & \text{otherwise} \end{cases}
+\end{equation*}
 $$
 
 $r_l$는 거리인데 두개의 후보 $r_l$사이  거리가 $r_l$보다 작으면 마스크 $M_l(i,j)$는 0을 취하며 attention이 계산되고 그렇지않으면 음의 무한대를 가져서 attention 계산에서 제외된다. 그리고 cross-attention과 feed-forward layer를 통해서 instance token과 word embedding을 융합한다.  종 인스턴스 임베딩을 생성하기 위해, 트랜스포머 디코더 블록을 여러 번 반복 적용하며, 각 반복마다 마스킹 반경 $r_l$을 증가시키는 방식으로 작동한다. mask도 supervised로 선택되는데 이때 loss는 cross entropy loss이다.
@@ -186,7 +200,9 @@ $r_l$는 거리인데 두개의 후보 $r_l$사이  거리가 $r_l$보다 작으
 **Inducing separation via contrastive learning**
 
 $$
+\begin{equation*}
 L_{\text{con}}(e_s, e_i) = -\log \frac{\exp(d(e_s, e_{i,k+}) / \tau)}{\sum_k \exp(d(e_s, e_{i,k}) / \tau)}
+\end{equation*}
 $$
 
 $e_s$는 문장 임베딩, $e_i$는 인스턴스 임베딩, $d()$는 코사인 유사도, $\tau$는 온도 매개변수를 나타내는데 이 손실 함수는 word embedding과 instance embedding 사이의 구분하기 위함이다. 문장 embedding과 일치하는 인스턴스 벡터는 긍정적인 샘플로 취급되어 서로 가까워지도록 유도되며, 나머지 인스턴스와의 쌍은 부정적인 샘플로 취급되어 서로 멀어지도록 유도된다. 이 방식은 반복적인 인스턴스 매핑 간의 모호성을 줄이고, 다중 인스턴스 참조 상황에서의 지역화를 돕기 위한 일반적인 솔루션을 제공한다. 
@@ -196,7 +212,9 @@ $e_s$는 문장 임베딩, $e_i$는 인스턴스 임베딩, $d()$는 코사인 �
 3D의 입장에서 물체를 바라볼 때 우리는 관점에 따라 방향이 달라진다. 그래서 카메라가 보고있는 위치와 방향의 정보를 token으로 넣어서 임베딩을 생성한다. 좀 어려운 말로 시점 의존전 참조를 해결한다고 말할수 있다. 카메라 토큰에 대한 마스킹 값은 모든 인스턴스 *i*에 대해 0으로 설정되어, 모든 레이어에서 카메라 token이 attention계산을 하도록 한다. 카메라 토큰의 출력은 주석 과정에서 사용된 카메라 위치와 비교하여 L2 손실을 통해 supervised된다. 이는 모델이 카메라의 관점을 학습하고 이를 바탕으로 객체를 더 정확히 지역화할 수 있도록 돕는다. 카메라 토큰에 대한 마스킹 값은 아래와 같이 정의한다. 
 
 $$
+\begin{equation*}
 M_l(i, i_c) = M_l(i_c, i) = 0, \ \forall i.
+\end{equation*}
 $$
 
 # &lt; Experiments &gt;
