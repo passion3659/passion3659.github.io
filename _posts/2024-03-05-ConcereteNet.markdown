@@ -15,6 +15,8 @@ categories:
 
 {% include toc %}
 
+제가 연구하려는 분야의 가장 성능이 높은 모델의 논문인데 재미있게 읽어보겠습니다.
+
 # &lt; Abstract &gt;
 
 3D visual grounding는 자연어로 된 설명으로 참조되는 3D 장면에서 물체의 위치를 파악하는 작업 보통 bbox(bounding box)를  통해서 진행한다.하지만 실제 application에서는 bbox는 충분히 설명하지 못한다. 따라서 3D-visual grounding보다는 3D instance segmentation로 진행하려고 한다.
@@ -107,7 +109,11 @@ object proposal 모듈과 fusion 모듈에서 attetion mecahinism을 이용해 �
 
 그림과 같이 UNet을 backbone으로 사용해서 point를 처리하는 구조를 가진다. 이때 두개의 loss를 이용하는데 sementic loss와 offset loss이다. semantic loss는 UNet에서 나온 값과 실제 semantic label을 비교하는 loss이고 offset loss는 instance center에서의 거리를 ground truth와 pred value와 비교하는 값이다. 수식은 아래와 같다. 
 
-$$L_{sem} = H(s, \hat{s})$$
+$$
+\begin{equation}
+L_{sem} = H(s, \hat{s})
+\end{equation}
+$$
 
 $$
 L_{off} = L_1(x, \hat{x})
@@ -236,3 +242,5 @@ task가 데이터셋이 하나밖에 없어서 다른 이것저것 실험을 많
 # &lt; Conclusion &gt;
 
 고밀도 3D 시각적 그라운딩, 즉 참조 기반 3D instance segmentation 문제를 다룬다. 기준 커널 기반의 고밀도 3D 접지 접근법을 확립하고, 세 가지 독립적인 개선안을 제안하여 발생하는 약점을 해결한다. 먼저 bottom-up attentive fusion module을 도입하여 인스턴스 간 관계 단서를 찾고, 다음으로 contrastive loss을 구성하여 일치하지 않는 인스턴스와 문장 임베딩 사이의 잠재 공간 분리를 유도하고, 마지막으로 글로벌 카메라 토큰을 학습하여 view-dependent utterances를 명확히 구분한다. 이 세 가지 새로운 모듈을 결합하여 제안된 ConcreteNet은 널리 사용되는 ScanRefer 온라인 벤치마크에서 sota를 보인다.
+
+
