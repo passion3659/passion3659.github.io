@@ -1,0 +1,173 @@
+---
+layout: post
+title:  "Lass-Net review"
+date:   2024-03-26 19:22:12 +0900
+use_math: true
+categories:
+  - NLP
+  - Speech
+  - Multimodal
+  - Paper Review
+---
+# "Separate What You Describe: Language-Queried Audio Source Separation"
+
+원문: <a href="https://arxiv.org/abs/2203.15147">Liu, Xubo, et al. "Separate what you describe: Language-queried audio source separation." arXiv preprint arXiv:2203.15147 (2022).</a> 
+
+{% include toc %}
+
+제가 연구하려는 분야의 기초 모델의 논문인데 재미있게 읽어보겠습니다.
+
+# &lt; Abstract &gt;
+
+음성과 언어를 공동으로 처리하고 오디오 혼합물에서 언어 쿼리와 일치하는 소스를 분리하도록 하는 신경망인 LASSNet을 제안한다. 예를들어서 어떤 음성이 있는데 그 음성이 “한 남자가 농담을 하고 사람들이 웃는 소리” 라면 농담을 하는 음성과 웃는 소리를 분리하는 것이다. task 이름은 language-queried audio source separation(LASS)이다. 분리된 오디오 샘플과 소스 코드는 https: [//liuxubo717.github.io/LASS-demopage에서](https://liuxubo717.github.io/LASS-demopage%EC%97%90%EC%84%9C) 확인할 수 있다.
+
+# &lt; Introduction &gt;
+
+보통 선행연구에서는 source category 정보를 이용해서 음원 분리를 했다. 그런 정보는 제한적이라서 자연어를 이용해서 분리하는 것을 선호하고 있다. 예를 들어서 자연어 "배경에서 개가 짖음" 또는 "사람들이 박수를 치고 이어서 여성이 말함”과 같은 사운드는 소스분리를 위한 보조 정보가 포함될 수 있다. 
+
+본 논문은 language-queried audio source separation (LASS) 작업을 소개한다.  오디오 혼합물과 대상 소스에 대한 자연어 쿼리가 주어지면 LASS는 혼합물에서 대상 소스를 자동으로 추출하는 것을 목표로 하며, 이때 대상 소스는 언어 쿼리와 일치한다. 이러한 시스템은 자동 오디오 편집[13], 멀티미디어 콘텐츠 검색[14], 제어 가능한 히어러블 디바이스[12] 등 다양한 애플리케이션에서 유용하게 사용될 수 있다. 
+
+본 연구에서는 음향 정보와 언어 정보를 공동으로 처리하고 자연어 표현으로 기술된 목표 소스를 분리하도록 학습된 LASS-Net을 제시한다. LASS-Net에서는 Transformer 기반 [15] 쿼리 네트워크를 사용하여 언어 표현을 쿼리 임베딩으로 인코딩한 다음, ResUNet 기반 [5] 분리 네트워크를 사용하여 쿼리 임베딩에 조건이 지정된 혼합물로부터 목표 소스를 분리한다. 또한 다양한 사람이 주석을 단 설명을 성능이 좋게 분리해줘서 좋은 가능성을 보인다고 한다. 
+
+섹션 2에서 관련 작업을 검토한다. 섹션 3에서는 LASS-Net을 소개한다. 섹션 4에서는 우리가 만든 데이터셋을, 섹션 5에서는 실험과 결과를 설명한다. 섹션 6에서는 결론을 도출하고 향후 작업에 대한 논의와 함께 결론을 내린다.
+
+# &lt; Related Work &gt;
+
+universal sound separation, target source extraction, and audio captioning과 연관이 있어서 각각에 대해서 좀 알아보고 가겠다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Universal sound separation</strong><br></div>
+Universal sound separation (USS)는 임의의 음원이 혼합된 음원을 클래스별로 분리하는 작업이다. 현실 세계의 사운드 클래스 수는 매우 많기 때문에 USS는 어려운 문제이다. 사운드 분류기가 학습한 의미 정보를 활용하거나[10], 대규모 고품질 데이터 세트를 구축하는 등 많은 수의 사운드 클래스 문제를 해결하기 위해 여러 가지 접근 방식이 제안되었다[11]. LASS는 USS와 유사한 방식으로 실제 소리를 분리하는 것을 목표로 하지만, 자연어 설명을 쿼리로 사용하여 분리를 수행하는 것을 목표로 한다.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Target source extraction</strong><br></div>
+Target source extraction (TSE)는 사운드 이벤트 태그와 같은 쿼리 정보가 주어지면 오디오 혼합물에서 특정 소스를 분리하는 것을 목표로 한다. USS와 달리 TSE는 혼합물에서 관심 있는 소스만 추출한다. 화자 정보를 이용한 목표 음성 추출[17, 18], 음향 이벤트 태그[12] 또는 의성어[19]를 이용한 목표 소리 추출 등 이 문제에 대한 여러 응용 사례가 있다. TSE와 달리 LASS는 언어 쿼리와 일치하는 타겟 오디오 소스를 추출하는 데 중점을 둔다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Automated audio captioning</strong><br></div>
+Automated Audio captioning (AAC) 은 오디오 클립에 대해 자연어 설명을 생성하는 작업이다. 최근 AAC는 음향 장면 및 이벤트 감지 및 분류(DCASE) 커뮤니티에서 점점 더 많은 관심을 받고 있다. AAC를 위한 여러 데이터 세트가 있는데, Clotho [24], AudioCaps [16] 등이 있다. AudioCaps는 AAC 연구를 위한 가장 큰 공개 데이터셋으로, 최근 여러 연구에서 사용되었다 [25, 26]. 이 작업에서는 AudioCaps 데이터셋을 기반으로 LASS용 데이터셋을 생성한다. 이 새로운 데이터 세트는 섹션 4에서 설명한다.
+
+# &lt; Proposed Approach &gt;
+![image](https://github.com/f90/Wave-U-Net-Pytorch/assets/89252263/46074ddc-f0af-4e77-833a-8f3cc069e849)
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>LASS-Net</strong><br></div>
+그림 1과 같이 자연어 쿼리로 대상 오디오 소스를 분리하는 신경망인 LASS-Net을 제안한다. LASS-Net은 언어 쿼리를 입력으로 받아 쿼리 임베딩을 출력하는 쿼리 네트워크(QueryNet)와 혼합 및 쿼리 임베딩을 입력으로 받아 대상 소스를 예측하는 분리 네트워크(SeparationNet)의 두 가지 구성 요소로 이루어져 있다. 이 두 모듈은 공동으로 학습된다. 하나씩 살펴보자.
+
+1. **언어 쿼리 임베딩 생성(QueryNet)**
+    1. 언어 쿼리를 받아서 임베딩을 추출한다.
+    
+    $$
+    \text{QueryNet}(q) \mapsto e_q
+    $$
+    
+2. **스펙트로그램 변환 (Short-time Fourier transform, STFT)**
+    1. 오디오 혼합 x를 STFT를 사용하여 스펙트로그램 X로 변환한다.
+    2. 이 스펙트로그램은 크기 $|X|$ 와 위상 ‘$e^{j\angle X}$’로 구성된다.
+    3. 크기 스펙트로그램 ‘$|X|$’는 시간-주파수 표현의 2차원 배열로, T는 시간 프레임의 수, F는 스펙트럼 특성의 차원을 나타낸다.
+
+$$
+X = |X|e^{j\angle X}
+$$
+
+$$
+|X| \in \mathbb{R}^{F \times T}
+$$
+
+1. **분리 네트워크 (SeparationNet)**
+    1. SeparationNet은 $|X|$와 쿼리 임베딩 $e_q$를 입력으로 받아 잠재 특성 Z를 출력한다.
+    2. Z는 $|X|$와 동일한 형태를 가진다. 
+    
+    $$
+    \text{SeparationNet}(|X|, e_q) \mapsto Z \in \mathbb{R}^{F \times T}
+    $$
+    
+2. **마스킹을 통한 스펙트로그램 추정**
+    1. Z를 시그모이드 함수를 통과시켜 마스크 ‘M’을 생성한다.
+    2. 그리고 이 마스크 ‘M’값과 ‘$|X|$’ 값을 Hadamard 곱(element-wise)으로 적용하여 얻는다. 
+
+$$
+\sigma(Z) = M \in [0, 1]^{F \times T}
+$$
+
+$$
+|\hat{S}| = M \circ |X| \in \mathbb{R}^{F \times T}
+$$
+
+1. **손실 함수 (Loss Function)**
+    1. 훈련 목표는 $|\hat{S}|$와 ground truth 타겟 오디오 소스의 크기 스펙트로그램 $|S|$간의 평균 절대 오차(MAE)를 최소화하는 것이다.
+
+$$
+\text{Loss}_{MAE} = \left\| |S| - |\hat{S}| \right\|_1
+$$
+
+1. **위상 복원 및 역변환 (Inverse STFT)**
+    1. mixture phase $e^{j\angle X}$ 은 역변환을 위해서 재사용된다. 
+    
+    $$
+    \hat{S} = |\hat{S}|e^{j\angle X}
+    $$
+    
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Query network</strong><br></div>
+그냥 BERT모델을 나오면 256차원의 word-level embedding을 얻을수 있다고 한다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Separation network</strong><br></div>
+이 부분은 Query embedding과 spectrogram을 넣어서 어떻게 처리되는지 알려준다.
+일단 분리하는 네트워크는 ResUNet기반으로 만들었는데 6개의 encoder와 6개의 decoder block으로 구성되어있고 스킵 연결이 있다. 여기에 Film layer를 사용하여 각 convblock후 film layer를 통과한다.   
+
+$$
+\text{FiLM}(H_i^{(l)}, \gamma_i^{(l)}, \beta_i^{(l)}) = \gamma_i^{(l)} H_i^{(l)} + \beta_i^{(l)}
+$$
+
+# &lt; Dataset &gt;
+
+AudioSet 데이터셋 중 5만개의 10초 오디오클립에 사람이 주석을 단 데이터를 만든게 있다. 그게 AudioCaps 데이터셋인데 이 AudioCaps 데이터셋을 기반으로 Lass용 데이터셋을 만들었다.
+
+다양성을 보장하기 위해서 Audioset의 5개 루트 범주인 (Human sounds), (Animal), (Sound of things), (Natural sound), (Channel, environment and background) 에서 33개의 태그를 선택한다. Audiocaps에서 그 태그에 맞는 음성을 모두 검색하니까 6244개의 오디오 클립이 있으며 6044개와 200개의 오디오 클립으로 train/test로 나눈다.
+
+오디오 mix를 생성하기위해서 일단 대상 소스를 선택하고 그와 겹치지 않은 클립을 무작위 배경소스로 선택한다. 이 무작위로 선택되어서 데이터셋이 만들어진게 아니라 훈련할 때 무작위로 즉석 생성된다. 테스트셋은 미리 만들어놓았다.
+
+그리고 추가적으로 오디오 소스에 대해서 사람의 설명은 다 다를텐데 그것에 대해서도 데이터셋을 만들었다. 5명의 언어 전문가에게 주석을 달도록 했고 그 테스트 데이터 셋도 Lass-Sub-Test로 만들었다.
+
+# &lt; Experiments and Results &gt;
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Data processing</strong><br></div>
+- 32kHz sampling rate
+- STFT
+  - frame_size = 1024
+  - hop_size = 512
+  - spectogram_10sec = 513*626
+- word
+  - 소문자로 변환
+  - 시작에 sos토큰
+  - word_piece tokenizer 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Training procedure</strong><br></div>
+Data processing
+batch_size = 16
+optimizer = Adam
+learning rate = 3 × 10^−4
+iterations = 20000
+gpu = 3090 24GB
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Evaluation metrics</strong><br></div>
+사용되는 지표는 다음과 같다. 
+- source to distortion ratio (SDR) : 원본 신호와 복원된 신호 사이의 비율을 측정
+- source to inferences ratio (SIR) : 원본 신호와 간섭(interferences) 사이의 비율을 측정
+- Sources to Artifacts Ratio (SAR) : 원본 신호와 왜곡, 잡음 신호 비율 측정
+- scale-invariant SDR (SI-SDR) : 복원된 신호와 원본 신호의 스케일 차이를 보정하여 평가하는 지표
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Results</strong><br></div>
+지표가 4개라면 실험군은 총 3개이다. 
+1. 아무것도 안한거
+2. UNet으로 tag기반 train한거
+3. LASS-Net으로 language를 쿼리로 한거
+
+결과는 다음 표와 같다
+
+![image](https://github.com/f90/Wave-U-Net-Pytorch/assets/89252263/55ddaff0-cf86-49b8-a8ce-e42e10291113)
+
+그리고 시각화를 하여서 분리된것을 보여준다.
+
+![image](https://github.com/f90/Wave-U-Net-Pytorch/assets/89252263/fa3395bb-b03e-4570-885c-7f7f84511f96)
+
+# &lt; Conclusions &gt;
+
+ LASS 작업에 대한 연구는 오디오 소스 분리와 자연어 쿼리를 연결하는 최초의 시도인 을 연결하는 최초의 시도이다. 실험 결과는 LASS-Net의 유망한 분리 결과와 일반화 기능을 보여준다.

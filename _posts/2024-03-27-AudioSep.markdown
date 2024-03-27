@@ -1,0 +1,335 @@
+---
+layout: post
+title:  "AudioSep review"
+date:   2024-03-27 20:10:13 +0900
+use_math: true
+categories:
+  - NLP
+  - Speech
+  - Multimodal
+  - Paper Review
+---
+# “Seperate Anything you Describe”
+
+원문: <a href="https://arxiv.org/abs/2308.05037">Liu, Xubo, et al. "Separate anything you describe." arXiv preprint arXiv:2308.05037 (2023).</a> 
+
+{% include toc %}
+
+Lass-Net의 후속 논문인데 재미있게 읽어보겠습니다.
+
+# **&lt; Abstract &gt;**
+
+Language-queried audio source separation (LASS)는 자연어 쿼리로 오디오를 분리하는 task로 새로운 패러다임이다. 최근의 연구는 약기나 제한된 오디오에서 분리성능을 달성했지만 오픈 도메인에서 오디오 분리를 하지못했다. 본 논문은 자연어 쿼리를 사용해서 오픈 도메인 오디오 분리를 위한 모델인 AudioSep을 소개한다. 대규모 멀티모달 데이터 세트에 대해 AudioSep을 학습시키고 audio event separation, musical instrument separation, and speech enhancement 등 다양한 작업에서 그 기능을 광범위하게 평가한다. 결과적으로 AudioSep은 강력한 분리성능과 인상적인 제로샷 일반화능력을 보여준다. reproduction을 위한 소스코드, 평가 벤치마크 및 사전훈련된 모델은 [https://github.com/Audio-AGI/AudioSep](https://github.com/Audio-AGI/AudioSep) 에 공개했다.
+
+# **&lt; Introduction &gt;**
+
+Sound seperation은 event separation, music source separation, speech enhancement 등 다양한 분야에 적용된다. 최근에는 실제 사운드 녹음에서 임의의 소리를 분리하는 universal sound separation (USS)에 관심이 많다. 하지만 세상에 존재하는 음원의 종류가 매우 다양하기 때문에 혼합된 음원에서 모든 음원을 분리하는것은 어렵다. 그래서 특정 음원을 분리하는 query-based sound separation (QSS)이 제안되었다. 
+
+최근에는 language-queried audio source separation (LASS)라는 새로운 패러다임의 QSS가 제안되었다. LASS는 향후 디지털 오디오 애플리케이션에 잠재적으로 유용한 도구로, 사용자가 자연어 명령을 통해 원하는 오디오 소스를 추출할 수 있게 해준다. 
+
+LASS 학습의 어려움은 자연어 표현의 복잡성(complexity)과 가변성(variability)과 관련이 있다. 
+
+1. 복잡성
+    - 아래처럼 같은 음원에 대해 자연어 쿼리가 정교할수도 투박할수도 있다.
+        1. “사람들이 말하고 리듬 비트에 맞춰 음악이 재생됨”
+        2. “음성과 음악”
+2. 가변성 
+    - 아래처럼 같은 음원에 대해 여러 표현이 있다.
+        1. "경쾌한 음악 멜로디가 반복해서 재생되고 있습니다”
+        2. "음악이 리드미컬한 비트와 함께 재생되고 있습니다”
+
+LASS는 이러한 구문과 그 관계를 언어 설명에 캡처해야 할 뿐만 아니라 언어 쿼리와 일치하는 하나 이상의 음원을 오디오 혼합물에서 분리해야 한다. 
+
+기존의 LASS 방식은 소규모 데이터를 훈련에 활용하고 악기 및 제한된 사운드 이벤트 세트와 같은 제한된 소스 유형을 분리하는 데 중점을 둔다. 수백 개의 실제 음원과 같은 오픈 도메인 시나리오에 LASS를 일반화할 수 있는 가능성은 아직 완전히 탐색되지 않았다. LASS에 대한 이전 연구는 각 도메인별 테스트 세트에서 모델 성능을 평가하기 때문에 향후 비교 및 재현이 불편하고 일관성이 떨어진다.
+
+이 연구에서는 자연어 설명으로 소리 분리를 위한 기반 모델을 구축하는 것이 목표이다. 대규모 데이터 세트를 활용하여 오픈 도메인 시나리오에서 강력한 일반화가 가능하도록 사전 학습된 소리 분리 모델을 개발하는 데 중점을 두고 있다. 
+
+이 연구는 Separate What You Describe의 연장선에 있다. 
+
+기여는 다음과 같다. 
+- opendomain, universal sound separation with natural language queries의 foundation모델인 AudioSep을 소개한다.
+    - 대규모의 오디오 데이터세트로 훈련되었고 강력한 분리 성능과 인상적인 제로샷 성능을 보여준다.
+- 포괄적인 벤치마크를 구축하여 광범위하게 평가했다.
+    - AudioSep이 기성품 오디오 노이즈 제거 사운드 분리 및 최신 LASS 모델보다 성능이 훨씬 뛰어나다는 것을 입증
+- large-scale multimodal supervision의 이전 연구를 사용하여 [23]–[25] Ablation study로 심층분석했다.
+
+# **&lt; RELATED WORK &gt;**
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Universal sound separation</strong><br></div>
+Universal sound separation (USS)는 임의의 음원이 혼합된 음원을 클래스별로 분리하는 것을 목표로 한다. 문제는 실제 시나리오에서 사운드 클래스가 다양하기 때문에 단일 사운드 분리 시스템으로 모든 음원을 분리하는 것이 어렵다는 것이다. 이를 위한 연구는 다음과 같다.
+
+- [4]는 permutation invariant training (PIT)을 이용하요 음성분리에서 유망한 결과를 보고했다.
+    - PIT는 single-source ground truth에서 시뮬레이션된 synthetic training mixtures을 사용하여  분포 불일치로 인해 최적의 성능이 아니다.
+- [27]은 노이즈가 있는 오디오 혼합물을 사용하여 mixture invariant training (MixIT)라는 비지도 방법이 제안했다.
+    - MixIT는 감독 방식(예: PIT)에 비해 경쟁력 있는 성능을 달성하여 잔향음 분리 성능이 크게 향상했다.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Query-based sound separation</strong><br></div>
+Query-based sound separation (QSS)는 일부 쿼리 정보가 주어지면 오디오 혼합물에서 특정 소스를 분리하는 것을 목표로 한다. 기존의 QSS 접근 방식은 vision-queried, audio-queried, label-queried의 세 가지 범주로 나눌 수 있다. 
+
+1.  **Vision-queried sound separation**
+    1. 최근에는 MixIT 방법을 기반으로 화면에서 소리 분리를 수행하는 AudioScope [14]가 제안되었다.
+    2. 비전 기반 접근 방식은 시청각 비디오 데이터에서 음원을 자동으로 분해하는 데 유용하다.
+    3. 하지만, 시각적 개체가 필요하다는 조건이 있고, 저화질 환경에서는 성능이 저하된다. 또한 비디오 데이터에는 화면 밖의 소리가 포함이 되어있지 않다. 노이즈가 많은 데이터로부터 음성 분리를 하는것이 sound separation system의 핵심과제라서 task적으로도 알맞지 않다.
+2. **Audio-queried sound separation**
+    1. 최근 연구[17], [18], [30]에서는 특정 음원을 분리하기 위해 대상 소스의 하나 또는 몇 개의 예시를 쿼리로 사용하는 문제를 해결했는데, 이를 원샷 또는 소수 샷 사운드 분리라고 한다. 
+        1. 이러한 방법은 대상 소스의 몇 가지 오디오 예제의 평균 오디오 임베딩에 따라 대상 사운드를 분리하므로, 훈련 중에 쿼리 임베딩을 계산하기 위해 레이블이 지정된 단일 소스가 필요하다.
+    2. [15], [16]의 연구에서는 먼저 사운드 이벤트 감지 모델[32]을 사용하여 오디오 이벤트의 앵커 세그먼트를 감지하고, 이 앵커 세그먼트는 다시 오디오 이벤트 분리 모델 학습을 위한 인공 혼합을 구성하는 데 사용한다. 
+        1. 하지만 테스트 과정에서 원하는 소리에 대한 기준 오디오 샘플을 준비하는 데 많은 시간이 소요되는 경우가 많다.
+3. **Label-queried sound separation**
+    1. 특정 음원을 쿼리하는 직관적인 방법은 해당 음원의 사운드 클래스 [19]-[22]의 레이블을 사용하는 것이다. 
+    2. 하지만 레이블 세트는 종종 미리 정의되어 있고 한정된 소스 카테고리 집합으로 제한된다. 
+    3. 이는 분리 시스템을 개방형 도메인 시나리오로 일반화하려고 할 때 사운드 분리 모델을 재학습하거나 지속적인 학습과 같은 복잡한 방법을 사용해야 할 수 있는 문제를 야기한다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Language-queried audio source separation</strong><br></div>
+LASS의 자연어 설명은 배경에서 개가 짖음" 또는 "사람들이 박수를 치고 이어서 여성이 말함"과 같이 사운드 이벤트의 공간적, 시간적 관계와 같이 대상 소스를 설명하기 위한 보조 정보가 포함될 수 있다. 
+
+- 최근의 시도들
+    - LASS-Net [3]은 end-to-end language-queried sound separation의 첫 시도였다. LASS-Net은 language query encoder와 separation model로 구성된다.
+    - [24]는 오디오 또는 텍스트 쿼리를 하이브리드 방식으로 받아들이는 유사한 모델을 제안했다.
+    - [37]은 optimal condition training (OCT) strategy을 제안했다.
+        - OCT는 주어진 목표 소스와 관련된 여러 조건(예: 신호 에너지, 고조파) 중 가장 성능이 좋은 조건을 향해 탐욕적인 최적화를 수행하여 분리 성능을 향상시킨다.
+- 문제점
+    - 위의 시도들은 데이터가 많이 제한된다.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Multimodal audio-language learning</strong><br></div>
+최근 멀티 모달 오디오 언어 분야는 오디오 신호 처리 및 자연어 처리 분야에서 중요한 연구 분야로 부상하고 있다.
+
+오디오 언어는 다양한 응용 시나리오에서 잠재력을 가진다.
+
+- automatic audio captioning [39]–[46] 은 오디오 콘텐츠에 대한 의미 있는 언어 설명을 제공하여 청각 장애인이 환경 소리를 이해하는 데 도움이 되는 것을 목표로 한다.
+- Language-based audio retrieval [47]–[51]은 보안 감시를 위한 효율적인 멀티미디어 콘텐츠 검색 및 사운드 분석을 용이하게 한다.
+- Text-to-audio generation [52]–[60] 은 언어 설명을 기반으로 오디오 콘텐츠를 합성하여 영화 제작, 게임 디자인, 가상 현실 및 디지털 미디어를 위한 사운드 합성 도구로 사용되며 시각 장애인의 텍스트 이해를 돕는 것을 목표로 한다.
+- Contrastive language-audio pre-training (CLAP) [35]은 대조 학습을 통해 오디오-텍스트 임베딩 공간을 학습하는 것을 목표로 한다.
+
+# **&lt; AUDIO SEP &gt;**
+
+![image](https://github.com/passion3659/ssd-failure/assets/89252263/51923924-954b-44e9-93d6-5192e762dc7b)
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>QueryNet</strong><br></div>
+CLIP과 CLAP에 썼던 텍스트 인코더를 사용한다. CLIP인지 CLAP인지는 모르겠는데 텍스트 인코더는 훈련중에 frozen된다. CLIP과 CLAP은 이미 text가 다른 모달에 대해서 매핑이 되어있게 pretrained이 되어있어서 이 임베딩을 사용하여 LASS모델을 훈련하거나 확장할수 있다고 한다. 그리고 CLAP이 CLIP보다는 성능이 좋다고 한다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>SeparationNet</strong><br></div>
+SeparationNet의 경우 ResUNet 모델을 백본으로 사용한다. 이 모델의 input은 mixture of audio clips이다. 하나씩 순서를 살펴보자 
+
+1. STFT로 complex spectrogram을 계산한다. 그리고 거기서 magnitude spectogram과 phase of X를 추출한다. 각각에 대한 언어 수식은 다음과 같다. 
+
+$$
+complex\;spectrogram => X \in \mathbb{C}^{T \times F}
+$$
+
+$$
+magnitude\:spectrogram =>|X|
+$$
+
+$$
+phase\:of\:X => e^{j\angle X}
+
+$$
+
+$$
+X = |X|e^{j\angle X}
+$$
+
+1. ResUNet으로 위 값을 넣으면 magnitude mask와 phase residual이 나오는데 다음과 같이 표기한다.  
+    1. magnitude mask는 크기를 조절하고 residual은 각도를 조절한다.
+
+$$
+magnitude\;mask => |M|
+$$
+
+$$
+phase\; residual =>{\angle M}
+$$
+
+1. 이 값으로 우리는 원래 complex spectrogram에 계산을 다음과 같이 해서 target 값을 만든다. 
+    
+    $$
+    \hat{S} = |M| \circ |X| e^{j(\angle X + \angle M)}
+    $$
+    
+2. 그 뒤는 LASS-Net과 동일하게 FILM LAYER를 거친다. 
+    1. 이 부분은 Query embedding과 spectrogram을 넣어서 어떻게 처리되는지 알려준다.
+    일단 분리하는 네트워크는 ResUNet기반으로 만들었는데 6개의 encoder와 6개의 decoder block으로 구성되어있고 스킵 연결이 있다. 여기에 Film layer를 사용하여 각 convblock후 film layer를 통과한다.   
+    
+    $$
+    \text{FiLM}(H_i^{(l)}, \gamma_i^{(l)}, \beta_i^{(l)}) = \gamma_i^{(l)} H_i^{(l)} + \beta_i^{(l)}
+    $$
+    
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Loss and training</strong><br></div>
+training 중에 ‘loudness augmentation’방법 사용한다. 이것은 소리의 크기를 인위적으로 변화시키는 기법으로 다음과 같다.
+
+1. 오디오 신호 S1과 S2를 혼합해서 만들때 먼저 각 신호의 에너지 E1과 E2를 계산한다. 
+2. 그 뒤 S1과 S2가 같은 에너지를 가지도록 S2에 스케일링 팩터 알파를 적용한다. 여기서 알파는 루트(E1/E2)로 계산된다.
+3. 이렇게 해서 얻은 신호 X는 S1과 알파를 곱한 S2의 합으로 나타낸다.
+
+$$
+x = s_1 + \alpha s_2
+$$
+
+Loss는 LASS-Net과 똑같이 L1 loss를 사용한다. 
+
+$$
+\text{Loss}_{L1} = \lVert s - \hat{s} \rVert_1
+$$
+
+# **&lt; DATASETS AND EVALUATION BENCHMARK &gt;**
+이 섹션에서는 audiosep에 사용된 훈련 데이터 세트에 대한 자세한 설명과 함께 확립된 평가 벤치마크를 제공한다. 데이터 세트의 통계는 표 I과 II에 나와 있다. 
+
+![image](https://github.com/passion3659/ssd-failure/assets/89252263/23a8bd6f-7416-4c52-878e-761b16eaf6d2)
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Training datasets</strong><br></div>
+1. AudioSet:
+    - 규모: 약 200만 개의 10초짜리 오디오 스니펫
+    - 출처: YouTube
+    - 라벨링: 약한 라벨링(weakly-labelled), 타이밍 정보 없음
+    - 사운드 클래스: 527개의 구별되는 사운드 클래스
+    - 트레이닝 세트: 2,063,839 클립, 이 중 22,160 클립은 균형 잡힌 세트
+    - 가용성: 94% 다운로드 가능 (1,934,187 클립)
+    - 처리: 모든 클립 32 kHz에서 모노로 리샘플링
+2. VGGSound:
+    - 규모: 약 20만 개의 10초짜리 비디오 클립
+    - 출처: YouTube
+    - 라벨링: 309 사운드 클래스에 걸쳐 주석 처리
+    - 내용: 사람의 행동, 소리를 내는 객체, 인간-객체 상호작용 포함
+    - 트레이닝 세트: 183,727 개의 오디오-비주얼 클립
+    - 테스트 세트: 15,449 클립
+    - 처리: 모든 클립 32 kHz에서 리샘플링
+3. AudioCaps:
+    - 규모: 50,725 개의 10초짜리 오디오 클립
+    - 출처: AudioSet
+    - 분할: 트레이닝, 검증, 테스팅 세트
+    - 라벨링: 아마존 메카니컬 터크를 통한 자연어 설명
+    - 트레이닝 세트: 49,274 클립 (98% 가용)
+    - 검증 세트: 494 클립 (99% 가용)
+    - 테스트 세트: 957 클립 (98% 가용)
+4. Clotho v2:
+    - 규모: 개발(3,839 클립), 검증(1,045 클립), 평가(1,045 클립) 분할
+    - 출처: FreeSound
+    - 라벨링: 아마존 메카니컬 터크를 통한 주석 처리
+    - 내용: 다양성에 중점을 둔 캡션
+    - 처리: 개발과 검증 분할을 합쳐 새 트레이닝 세트(4,884 클립) 구성, 모든 클립 32 kHz에서 리샘플링
+5. WavCaps:
+    - 규모: 403,050 개의 오디오 클립, 총 7,568시간
+    - 출처: 다양한 소스 (FreeSound, BBC Sound Effects 등)
+    - 라벨링: ChatGPT를 사용한 캡션 필터링 및 생성
+    - 평균 길이: 오디오 클립 67.59초, 캡션 텍스트 7.8단어
+    - 처리: 모든 클립 32 kHz에서 리샘플링하여 트레이닝에 사용
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Evaluation benchmark</strong><br></div>
+![image](https://github.com/passion3659/ssd-failure/assets/89252263/5e20e7ed-8c8a-46b0-b69e-c46a9c07f661)
+
+1. AudioSet:
+    - 포함된 오디오 클립 수: 20,317개, 527개의 사운드 클래스에 걸쳐 있음.
+    - 다운로드 성공한 클립 수: 20,317개 중 18,887개 (93%).
+    - 평가 방법: 서로 다른 사운드 클래스의 두 앵커 세그먼트를 0dB의 신호대잡음비(SNR)로 혼합하여 총 5,270개의 믹스 생성.
+2. VGGSound:
+    - VGGSound-Clean으로 명명된 100개의 깨끗한 샘플을 수동으로 선정.
+    - 두 오디오 샘플의 라우드니스를 일정하게 샘플링한 후 혼합하여 총 1,000개의 평가 샘플 구성, 평균 SNR은 약 0dB.
+3. AudioCaps:
+    - 다운로드한 테스트 세트에는 각각 5개의 캡션으로 주석이 달린 957개의 오디오 클립이 포함됨.
+    - 목표 소스로 사용될 테스트 세트의 오디오 클립과 배경 소스로 사용될 또 다른 오디오 클립을 무작위로 선택하여 SNR이 0dB인 4,785개의 테스트 믹스를 생성.
+4. Clotho v2:
+    - 1,045개의 오디오 클립 포함, 각 클립은 5개의 인간 주석 캡션이 제공됨.
+    - 평가 세트의 각 오디오 클립을 목표 소스로 지정하고 두 클립을 무작위로 선택하여 연결 및 길이 조정 후 간섭 소스 생성, 총 5,225개의 평가 믹스 생성.
+5. ESC-50:
+    - 50개의 의미 클래스에 걸쳐 균등하게 배치된 2,000개의 환경 오디오 녹음이 포함됨.
+    - 32kHz로 다운샘플링 한 후 서로 다른 사운드 클래스의 두 오디오 클립을 0dB SNR로 혼합하여 총 2,000개의 평가 쌍 생성.
+6. MUSIC:
+    - 11개의 악기 클래스에서 사람들이 악기를 연주하는 536개의 비디오 녹화 포함.
+    - 테스트 분할에서 46개의 비디오 녹화를 다운로드하고, 32kHz에서 리샘플링하여 10초 길이의 비중첩 클립으로 세분화.
+    - 각 비디오 세그먼트에 대해 다른 악기 클래스의 한 세그먼트를 무작위로 선택하여 0dB SNR의 믹스를 생성, 총 5,004개의 평가 쌍 구성.
+7. Voicebank-DEMAND:
+    - Voicebank 데이터셋(깨끗한 음성 포함)과 DEMAND 데이터셋(다양한 배경 소리 포함)을 통합함.
+    - 15, 10, 5, 그리고 0 dB의 신호대잡음비에서 Voicebank 데이터셋과 DEMAND 데이터셋을 혼합하여 소음이 있는 발화 생성, 테스트 세트에는 총 824개의 발화 포함.
+    - 이전 음성 향상 시스템과의 공정한 비교를 위해 모든 오디오 클립을 16 kHz로 리샘플링
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Evaluation metrics</strong><br></div>
+음성 분리 지표
+- signal-to-distortion ratio improvement (SDRi)
+- scale-invariant SDR (SI-SDR)
+
+음성 향상 지표
+- evaluation of speech quality (PESQ)
+- mean opinion score (MOS)
+- predictor of signal distortion (CSIG)
+- MOS predictor of background-noise intrusiveness (CBAK)
+- MOS predictor of overall signal quality (COVL)
+- and segmental signal-to-ratio noise (SSNR)
+
+모든 지표는 높은 값이 더 나은 성능을 보여준다.
+
+# **&lt;  EXPERIMENTS &gt;**
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Training details</strong><br></div>
+1. 트레이닝 믹스 생성:
+    - 트레이닝 세트에서 두 개의 오디오 클립을 무작위로 샘플링하여 각각에서 5초 길이의 오디오 세그먼트를 추출.
+    - 추출된 두 오디오 세그먼트를 혼합하여 하나의 트레이닝 믹스를 구성.
+2. 스펙트로그램 추출:
+    - 웨이브폼 신호에서 복소 스펙트로그램을 추출하기 위해 1024의 한(Hann) 윈도우 크기와 320의 홉(hop) 사이즈를 사용.
+3. 텍스트 임베딩 추출:
+    - CLIP 또는 CLAP 모델의 텍스트 인코더를 사용하여 텍스트 임베딩을 추출.
+    - CLIP 모델의 경우 ‘ViT-B-32’ 체크포인트 사용.
+    - CLAP 모델의 경우, 음악과 음성 데이터셋을 포함해 LAION-Audio-630k 데이터셋 [35]으로 훈련된 ‘music speech audioset epoch 15 esc 89.98.pt’ 체크포인트 사용.
+4. 비디오 데이터 처리:
+    - 1초 간격으로 프레임을 균일하게 추출하고, 추출된 프레임들의 평균 CLIP 임베딩을 쿼리 임베딩으로 계산.
+5. 분리 모델 구성:
+    - 30층의 ResUNet 구조 사용, 여기에는 6개의 인코더 블록과 6개의 디코더 블록 포함.
+    - 각 인코더 블록은 3×3 커널 크기의 두 개의 컨볼루셔널 레이어로 구성.
+    - 인코더 블록의 출력 특징 맵(feature map) 수는 각각 32, 64, 128, 256, 512, 1024.
+6. 훈련:
+    - Adam 최적화 기법을 사용하며, 학습률은 1×10^-3.
+    - 배치 사이즈 96으로 AudioSep 모델을 트레이닝.
+    - 8개의 Tesla V100 GPU 카드에서 총 1백만 스텝 동안 트레이닝 수행.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Comparison systems</strong><br></div>
+비교하려는 task는 2개이다. seperation, enhancement
+
+1. seperation 
+    
+    ![image](https://github.com/passion3659/ssd-failure/assets/89252263/65546612-aa5d-4b02-bd6e-58e2316ad978)
+    
+    여기서는 Lass model과 Audio-queried sound separation model 크게 두가지로 구분된다. 
+    
+    1.  Audio-queried sound separation model
+        1. AudioSet에서 훈련된 범용(universe) 사운드 분리 시스템
+        2. 30개와 60개의 ResUNet 레이어를 가진 USS-ResUNet30 및 USS-ResUNet60으로 비교
+    2. Lass model
+        1. LASS-Net
+            - 사전 훈련된 BERT와 ResUNet 사용.
+            - 오디오캡의 하위 집합(약 17.3시간)에 대해 학습됨.
+            - 범주에는 사람, 동물, 사물, 자연, 환경 소리 포함.
+        2. CLIPSep
+            - 쿼리 인코더로 CLIP 사용, SOP 기반 모델 사용.
+            - VGGSound 데이터셋의 노이즈 있는 시청각 비디오(약 500시간)로 학습.
+            - 노이즈 불변 훈련(NIT) 전략 사용.
+            - 평가를 위해 16kHz로 오디오 믹스 다운샘플링.
+2. enhancement
+    
+    ![image](https://github.com/passion3659/ssd-failure/assets/89252263/077a5436-80b9-4b76-a38d-46b5bd033c81)
+    
+    1.  Wiener 필터 [70], SEGAN [6], AudioSet-UNet [7], Wave-U-Net [71] 등 네 가지 상용 음성 향상 모델을 비교 시스템으로 채택
+
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Leveraging multimodal supervision for AudioSep</strong><br></div>
+![image](https://github.com/passion3659/ssd-failure/assets/89252263/421bdf43-d9d2-446f-a74e-6f2e8a04b769)
+
+clip 논문을 보면 text의 비율에 따른 결과를 보고한게 있다. 그래서 본 논문도 따라했다.  text ratios (TR)에 따른 성능은 위 그림과 같다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Visualization of separation results</strong><br></div>
+![image](https://github.com/passion3659/ssd-failure/assets/89252263/2cd64f48-7f41-4a17-b94c-d9e6adbf5db2)
+
+잘 분리된다는 것을 보여준다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Comparison of various text queries</strong><br></div>
+음성을 들었을 때 사람의 설명은 다 다르다. 이를 위해서 새로운 데이터 셋에 대해서도 만들었다. AudioCaps의 test 데이터셋에서 50개를 무작위로 선택해서 언어전문가 4명한테 개별적으로 주석을 달았다. 예시는 아래 그림과 같고 겹치지 않게 무작위로 10개의 배경 소스로 믹싱해서 만든 이 데이터를 AudioCaps-Mini라 부른다. 
+
+![image](https://github.com/passion3659/ssd-failure/assets/89252263/b0585c44-96fb-435d-a823-1917a48627af)
+
+총 카테고리가 그럼 3개가 된다. TEXT, Original, Re-annotated. 이 3개에 대해서 결과를 보면 다음과 같다. 
+
+![image](https://github.com/passion3659/ssd-failure/assets/89252263/2a4afd70-d11d-43d5-acce-a78d4b79d244)
+
+# **&lt;   CONCLUSION AND FUTURE WORK &gt;**
+
+본 논문은 자연어 설명이 포함된 오픈 도메인 범용 사운드 분리를 위한 기반 모델인 AudioSep을 소개한다. AudioSep은 텍스트 레이블이나 오디오 캡션을 쿼리로 사용하여 제로 샷 분리를 수행할 수 있다. 오디오 이벤트 분리, 악기 분리, 음성 향상과 같은 다양한 사운드 분리 작업을 포함한 포괄적인 평가 벤치마크를 제시했다. AudioSep은 최첨단 텍스트 키코딩 분리 시스템과 상용 오디오 키코딩 사운드 분리 모델보다 성능이 뛰어나다. 강력한 사운드 분리 성능과 함께 AudioSep이 CASA 문제를 유연하게 해결할 수 있는 유망한 접근 방식임을 보여준다. 향후 연구에서는 비지도 학습 기법[14], [27]을 통해 AudioSep의 분리 성능을 개선하고, 비전-키워드 분리, 오디오-키워드 분리, 텍스트 가이드 스피커 분리[79] 작업을 지원하도록 AudioSep을 확장할 예정이다.
