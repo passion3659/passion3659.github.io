@@ -50,60 +50,7 @@ Automated Audio captioning (AAC) 은 오디오 클립에 대해 자연어 설명
 <div style="font-size: 20px; margin: 5px 0;"><strong>LASS-Net</strong><br></div>
 그림 1과 같이 자연어 쿼리로 대상 오디오 소스를 분리하는 신경망인 LASS-Net을 제안한다. LASS-Net은 언어 쿼리를 입력으로 받아 쿼리 임베딩을 출력하는 쿼리 네트워크(QueryNet)와 혼합 및 쿼리 임베딩을 입력으로 받아 대상 소스를 예측하는 분리 네트워크(SeparationNet)의 두 가지 구성 요소로 이루어져 있다. 이 두 모듈은 공동으로 학습된다. 하나씩 살펴보자.
 
-1. **언어 쿼리 임베딩 생성(QueryNet)**
-    1. 언어 쿼리를 받아서 임베딩을 추출한다.
-    
-    $$
-    \text{QueryNet}(q) \mapsto e_q
-    $$
-    
-2. **스펙트로그램 변환 (Short-time Fourier transform, STFT)**
-    1. 오디오 혼합 x를 STFT를 사용하여 스펙트로그램 X로 변환한다.
-    2. 이 스펙트로그램은 크기 $|X|$ 와 위상 ‘$e^{j\angle X}$’로 구성된다.
-    3. 크기 스펙트로그램 ‘$|X|$’는 시간-주파수 표현의 2차원 배열로, T는 시간 프레임의 수, F는 스펙트럼 특성의 차원을 나타낸다.
-
-$$
-X = |X|e^{j\angle X}
-$$
-
-$$
-|X| \in \mathbb{R}^{F \times T}
-$$
-
-1. **분리 네트워크 (SeparationNet)**
-    1. SeparationNet은 $|X|$와 쿼리 임베딩 $e_q$를 입력으로 받아 잠재 특성 Z를 출력한다.
-    2. Z는 $|X|$와 동일한 형태를 가진다. 
-    
-    $$
-    \text{SeparationNet}(|X|, e_q) \mapsto Z \in \mathbb{R}^{F \times T}
-    $$
-    
-2. **마스킹을 통한 스펙트로그램 추정**
-    1. Z를 시그모이드 함수를 통과시켜 마스크 ‘M’을 생성한다.
-    2. 그리고 이 마스크 ‘M’값과 ‘$|X|$’ 값을 Hadamard 곱(element-wise)으로 적용하여 얻는다. 
-
-$$
-\sigma(Z) = M \in [0, 1]^{F \times T}
-$$
-
-$$
-|\hat{S}| = M \circ |X| \in \mathbb{R}^{F \times T}
-$$
-
-1. **손실 함수 (Loss Function)**
-    1. 훈련 목표는 $|\hat{S}|$와 ground truth 타겟 오디오 소스의 크기 스펙트로그램 $|S|$간의 평균 절대 오차(MAE)를 최소화하는 것이다.
-
-$$
-\text{Loss}_{MAE} = \left\| |S| - |\hat{S}| \right\|_1
-$$
-
-1. **위상 복원 및 역변환 (Inverse STFT)**
-    1. mixture phase $e^{j\angle X}$ 은 역변환을 위해서 재사용된다. 
-    
-    $$
-    \hat{S} = |\hat{S}|e^{j\angle X}
-    $$
-    
+![image](https://github.com/liuxubo717/LASS/assets/89252263/7b40133c-56cb-4832-b683-a5019d5b8b0d)
 
 <div style="font-size: 20px; margin: 5px 0;"><strong>Query network</strong><br></div>
 그냥 BERT모델을 나오면 256차원의 word-level embedding을 얻을수 있다고 한다. 
