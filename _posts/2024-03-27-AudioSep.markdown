@@ -106,7 +106,7 @@ LASS의 자연어 설명은 배경에서 개가 짖음" 또는 "사람들이 박
 ![image](https://github.com/passion3659/ssd-failure/assets/89252263/51923924-954b-44e9-93d6-5192e762dc7b)
 
 <div style="font-size: 20px; margin: 5px 0;"><strong>QueryNet</strong><br></div>
-CLIP과 CLAP에 썼던 텍스트 인코더를 사용한다. CLIP인지 CLAP인지는 모르겠는데 텍스트 인코더는 훈련중에 frozen된다. CLIP과 CLAP은 이미 text가 다른 모달에 대해서 매핑이 되어있게 pretrained이 되어있어서 이 임베딩을 사용하여 LASS모델을 훈련하거나 확장할수 있다고 한다. 그리고 CLAP이 CLIP보다는 성능이 좋다고 한다. 
+CLIP과 CLAP에 썼던 텍스트 인코더를 사용한다. CLIP과 CLAP 둘다 모르겠는데 텍스트 인코더는 훈련중에 frozen된다. CLIP과 CLAP은 이미 text가 다른 모달에 대해서 매핑이 되어있게 pretrained이 되어있어서 이 임베딩을 사용하여 LASS모델을 훈련하거나 확장할수 있다고 한다. 그리고 CLAP이 CLIP보다는 성능이 좋다고 한다. 
 
 <div style="font-size: 20px; margin: 5px 0;"><strong>SeparationNet</strong><br></div>
 SeparationNet의 경우 ResUNet 모델을 백본으로 사용한다. 이 모델의 input은 mixture of audio clips이다. 하나씩 순서를 살펴보자 
