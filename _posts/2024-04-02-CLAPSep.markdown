@@ -1,0 +1,558 @@
+---
+layout: post
+title:  "CLAPSep review"
+date:   2024-03-27 20:10:13 +0900
+use_math: true
+categories:
+  - NLP
+  - Speech
+  - Multimodal
+  - Paper Review
+---
+# “CLAPSep: Leveraging Contrastive Pre-trained Models for Multi-Modal Query-Conditioned Target Sound Extraction”
+
+원문: <a href="https://arxiv.org/abs/2402.17455">Ma, Hao, et al. "CLAPSep: Leveraging Contrastive Pre-trained Models for Multi-Modal Query-Conditioned Target Sound Extraction." arXiv preprint arXiv:2402.17455 (2024).</a> 
+
+{% include toc %}
+
+Lass task의 가장 최근에 나온 후속 논문인데 재미있게 읽어보겠습니다.
+
+# **&lt; Abstract &gt;**
+
+Universal sound separation (USS)는 실제 사운드 녹음에서 임의의 유형의 소리를 추출하는것이다. Languagequeried target sound extraction (TSE)는 USS를 달성하기 좋은 접근 방식이다. 
+
+이 TSE는 두개의 구성요소로 이루어져있다. 
+
+1. query network : query를 conditional embedding으로 변환하는것 
+2. separation network : conditional embeddings으로 target sounds를 추출하는것
+
+하지만 이 기존의 방식은 두가지 문제점을 가지고 있다.
+
+1. pre-trained models이 부족해서 보통 처음부터 initialized하게 train해야한다.
+2. 현존하는 method는 query network와 separation network를 동시에 학습해서 과적합이 일어난다.
+
+이러한 문제를 해결하기 위해서 pretrained된 모델인 CLAP을 가지고 CLAPSep을 구축했다. 
+
+사전 학습된 CLAP의 텍스트 인코더를 쿼리 네트워크로 사용함으로 사전지식을 충분히 학습한다. 또한 제안된 방법이 모델의 성능과 일반화 가능성을 보장하며 학습 리소스를 절약할 수 있음을 증명한다. 
+
+# **&lt; Introduction &gt;**
+
+시끄러운 소리들 사이에서 원하는 소리를 집중해서 듣는 효과를 ‘캌테일 파티 효과’라고 한다. 이 기능을 구현하기 위한 딥러닝 기술들이 많이 연구되었다. speech separation, speech enhancement, music source seperation 등 많은 분야가 연구되어왔다. Universal sound separation (USS)는 모든 sound를 분리하는 너 넓은 관점이다. 하지만 클래스 수가 증가함에 따라 작업의 복잡성이 증가하여 소스를 분리하는 것은 어려운 작업이 된다. 이 문제를 해결하기 위해 대상 사운드만을 추출하는 query-conditioned target sound extraction이 개발되었다. 
+
+이런 쿼리 조건부 TSE의 경우 추출할 소리를 설명하는 쿼리는 또 유형에 따라 다양하다. 
+
+label query, audio query, visual query, language query 등이 포함된다. 
+
+분명 label query는 가장 간단한 방법이지만 미리 정의된 유한한 레이블에 해당하는 제한된 수의 사운드 이벤트만 추출 수 있다. 
+
+label query의 대안으로 language query는 더 미묘하고 정교한 방식으로 각광받고 있다. 
+
+대상소리를 직접 지정하는 label query나 audio query보다는 더 포괄적이고 설명적인 지침을 제공한다. 예를 들어서 label query는 단순히 ‘음성’, ‘악기’, 를 지정한다면 language query는 ‘배경에 물줄기가 흐르면서 남자가 말하는 소리’ 이런 설명이 된다. 
+
+단순한 레이블에서 보다 풍부한 언어적 지침으로의 전환은 다양한 시나리오에 대한 모델의 적응력을 향상시키고 보다 직관적이고 다양한 사운드 분리 프로세스에 기여한다.
+
+이전 연구에서는 BERT로 언어부분을 처리하였다. 훈련과정에서 쿼리모델과 분리모델을 jointly하게 훈련하였다. 
+
+그러나 이렇게 훈련하면 query text를 audio feature embedding에 map하는것과 조건 query embedding으로 분리하는것을 동시에 하기 때문에 어렵다. 또한 과적합도 발생한다.  결과론적으로 일반화가 어려워지고 더 광범위한 입력에 대한 모델의 적응력이 제한된다. 
+
+그래서 본 논문은 clip에서 영감을 얻어 CLAP의 오디오 인코더를 재사용하여 성능을 올리기로한다. 구체적으로 CLAP 오디오 인코더를 재사용하여 다단계 특징을 추출하고 다단계 특징을 통합하여 분리 수행하는 디코더를 설계한다.
+
+또한 기존의 쿼리 조건부 방식은 "어떤 소리를 추출할지"를 나타내는 긍정적인 쿼리만 고려한다. 하지만 이번 연구에서는 “어떤 소리를 억제할지”에 대한 정보를 제공하면 더 도움이 된다는 것을 발견했다. 실험결과에 따르면 positive query에 negative query를 추가한 것이 더 성능이 좋다고 한다.
+
+기여는 다음과 같다. 
+
+- 실제 사운드 믹스에서 쿼리 조건부 목표 사운드 추출을 수행하기 위해 CLAP 기반 목표 사운드 추출 모델인 CLAPSep을 소개한다. 사전 훈련된 CLAP 모델을 재사용함으로써 데이터 및 계산적으로 효율적인 방식으로 쿼리 조건부 TSE를 달성한다.
+- CLAPSep 모델은 다중 모드 및 다중 값 사용자 쿼리를 모두 효과적으로 관리할 수 있다. 이 모델은 오디오 및/또는 언어, 긍정 및/또는 부정 쿼리를 통합함으로써 성능을 향상시킬 뿐만 아니라 애플리케이션의 다양성을 높힌다
+- 이러한 접근 방식은 여러 벤치마크에 걸쳐 광범위한 평가를 거쳤다. 실험 결과는 목표 사운드 추출에서 당사의 방법이 SOTA 성능을 달성한다는 것을 보여준다. 제로 샷 실험은 모델의 일반화 가능성을 강조하고, ablation experiments은 설계된 구성 요소의 효과를 강조한다. 소스 코드와 사전 훈련된 모델은 공개적으로 액세스할 수 있다.
+
+# **&lt; RELATED WORK &gt;**
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Deep Learning-Based Sound Separation</strong><br></div>
+
+sound separation task의 연구가 점점 더 많아 지고 있다. 
+
+일반적으로는 아래와 같은 3가지 모듈로 구성된다.
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/2651de4f-a02d-444c-8256-bcf5e60c3f1f)
+
+1. Encoder
+    1. 입력 waveform을 multi-channel audio representation으로 변경하는 모듈
+    2. 1-d conv일수 있으며, STFT일 수 있다. 
+2. Separation Network
+    1. 오디오 입력 표현으로부터 2차원 마스크를 추정하는 모듈
+3. Decoder
+    1. 마스크와 원래 표현을 곱해서 나온 값을 파형으로 재구성하는 모듈
+
+[4]는 CNN을 이용한 ConvTastNet을 제안, [28]은 transformer를 이용한 sepformer를 제안한다.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Universal Sound Separation (USS)</strong><br></div>
+
+USS는 임의의 소리 클래스로 일반화한다. 근데 이건 좀 많이 어렵다. 다양한 소리를 나눌려면 모델이 많은 학습 정보량을 가지고 있어야한다. USS를 추구하기 위해서 [9]는 모은 음원을 출력하는 모델을 제안했다. 이 모델의 순열 문제를 해결하기 위해 음성 분리에서 처음 제안된 permutation invariant training (PIT) 전략이 활용되었다. [10]은 비지도학습을 수행하기 위해 PIT의 대안인 mixture invariant training (MixIT) 전략을 활용했다. 하지만 이 USS는 모든 음원을 분리하게 때문에 최종적으로 필요한 하나의 음원을 얻기 위해 사후 선택 과정이 필요하다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Query-Conditioned Target Sound Extraction</strong><br></div>
+
+쿼리 조건부 소리 추출은 다른 소스는 무시하고 원하는 사운드만 집중해서 처리하는 접근방식을 제공한다. 이 쿼리는 유형에 따라 4가지로 구분가능하다.
+
+1. label-queried methods [12], [13], [14]
+2. visual-queried methods [17], [18]
+3. audio-queried methods [8], [14], [15], [16]
+4. language-queried methods [19], [20], [15].
+
+1,2,3은 사전에 정의된 레이블 벡터를 사용하여 추출할 수 있다. 주어진 레이블에 해당하는 음원만 분리하기에 사전 정의되지 않은 사운드를 분리하기 어렵다.
+
+그래서 Lass가 제안되었다. 언어 질의 목표 소리 추출로 인해 우리가 원하는 사운드를 더 유연하게 추출이 가능하다. 
+
+하지만 자연어 설명을 쿼리를 활용해 sound separation에 획기적으로 분리할거라는 유망한 task에도 불구하고 다음과 같은 어려움이 있다.
+
+- 쿼리 모델과 분리모델의 공동 최적화로 두 모델이 수렴하기 어렵다.
+⇒ 잠재적인 해결책은 query model과 separate model의 학습을 분리하는 것이긴 하다.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Contrastive Language-Audio Pre-Training</strong><br></div>
+
+multi-modal contrastive pre-training의 성공으로 query-conditioned target sound extraction systems에서 query model과 separate model을 분리할 수 있게 되었다. 
+
+이전의 연구에서 clip이나 clap을 사용해서 텍스트 인코더를 활용해 성능을 크게 향상시켰다. 하지만 Separation Network는 무작위로 초기화되었고 이를 해결하게 위해서는 상당한 양의 데이터가 필요하다. 
+
+# **&lt;  PROBLEM FORMULATION AND PROPOSED APPROACH &gt;**
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Problem Formulation</strong><br></div>
+
+음원 혼합은 다음과 같이 표현된다. 
+
+$$
+\tilde{x} = x + v
+$$
+
+그리고 각각의 값들은 다음과 같은 표현이다. 
+
+$$
+\tilde{x} \in \mathbb{R}^N\;(길이N의\;음원\;혼합) \\x \in \mathbb{R}^N \;(길이N의\;목표\;음원)\\v \in \mathbb{R}^N \;(방해되는\;다른\;음원)
+$$
+
+목표 음원 추출은 다음과 같이 표현된다. 
+
+$$
+\hat{x} = F(\tilde{x}, c; \theta_F)
+$$
+
+이거 또한 각각의 값들의 표현은 다음과 같다.
+
+$$
+\hat{x} \quad (예측된\;목표\;음원)\\F \quad (신경망\;함수)\\c \in \mathbb{R}^D \quad (조건\;임베딩)\\\theta_F \quad (신경망\;F의\;파라미터)
+$$
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Proposed CLAPSep Model</strong><br></div>
+
+다음 그림과 같이 3가지 구성요소가 있다. query network, audio encoder, separation decoder.
+
+짧게 흐름에 대해서 말하자면 
+
+1. query networkd에서 postive negative 쌍을 인토딩한다. 
+2. audio encoder에서 다단계 특징을 추출한다.
+3. separation decoder에서 인코딩된 audio 특징과 쿼리 임베딩 쌍에 따라 대상 스펙트로그램을 추정한다. 
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/4b780bbe-cfbb-4578-93f5-f47be6bc963f)
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>1. Query Network</strong><br></div>
+
+<img src="https://github.com/Aisaka0v0/CLAPSep/assets/89252263/6e8eed65-36f0-4163-b138-7df9f45e2306" alt="설명" width="300">
+
+CLAP 모델에 sound와 caption을 넣으면 각각의 embedding이 나온다. (차원이 같다)
+
+$$
+e_{text} \in \mathbb{R}^D \quad (텍스트\;임베딩)
+$$
+
+$$
+e_{audio} \in \mathbb{R}^D \quad (오디오\;임베딩)
+$$
+
+그 뒤 이 임베딩을 가지고 다음 공식과 같이 stochastic linear interpolation [24]을 한다. 
+
+$$
+e = \alpha e_{audio} + (1 - \alpha) e_{text}
+$$
+
+여기서 알파는 훈련중에는 0과 1사이에서 무작위로 샘플링된다. 테스트할때는 0, 1, 0.5로 두고 설정되는데 각각 텍스트만, 오디오만, 텍스트-오디오 사용을 의미한다. 
+
+아무튼 이 보간이 끝난뒤에 나온 값은 positive와 negative 둘다 적용되어서 두개의 embedding이 생기고 그냥 concat을 시켜서 다음과 같은 벡터가 나온다. 
+
+$$
+c = [e^{P}, e^{N}] \quad (조건\;임베딩\;출력)
+$$
+
+부정적 긍정적 쿼리가 없는 경우는 해당 임베딩은 0으로 설정된다.
+
+$$
+c = [e^{P}, 0]\;\;\;\;\;or\;\;\;\; c = [0, e^{N}]
+$$
+
+그리고 훈련중에는  positive-only, negative-only, and positivenegative queries는 0.25, 0.25, 0.5의 비율로 구성되며 이 Query Network는 다 freeze시켜서 parameter변화는 없다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>2. Audio Encoder</strong><br></div>
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/66aec36f-2762-4bfe-a292-921c40e6c156)
+
+오디오 인코더는 사전 훈련된 CLAP 인코더로 구성되어있으며 입력된 사운드 혼합으로 부터 멀티 레벨 특징을 추출한다. 구조는 L-layer cascaded swin-transformer를 따르며 Mel-spectrogram을 입력으로 받아 처리한다. 순서를 보면 다음과 같다. 
+
+1. Mel-spectrogram 생성 
+    1. Mel-spectrogram사운드와 주파수 내용을 시간에 따라 시각화한것으로 T*F차원의 행렬이다.
+        
+        $$
+        T\;\;(시간\;프레임\;수)\\F\;\;(주파수\;빈(bin)의\;수)
+        $$
+        
+2. 패치 시퀀스로 재구성
+    1. Mel-spectrogram은 정해진 크기의 패치로 나누어진다. 
+    2. 패치의 크기가 P라면 Mel-spectrogram은 다음 크기의 패치들로 재구성된다.
+        
+        $$
+        \frac{T}{P} \times \frac{F}{P}
+        $$
+        
+3. 패치 임베딩
+    1. 쪼개진 패치들을 임베딩시킨다. 그러면 드디어 특징을 얻는건데 PatchEmbed함수를 거친 최종 식은 다음과 같다.
+        
+        $$
+        H_e^0 = \text{PatchEmbed}(\text{Reshape}(|\tilde{X}_{Mel}|))
+        $$
+        
+    2. 이 식의 결과값의 형태는 다음과 같다. 
+        
+        $$
+        (\frac{T}{P} \times \frac{F}{P}, D_f)\;\;,\;\;D_f는\;임베딩후\;특징\;차원
+        $$
+        
+4. swin-transformer L레이어를 통과시켜 계층별 오디오 특징 추출
+    1. 식은 다음과 같다.
+        
+        $$
+        H_e^l = f_{enc}^{(l)}(H_e^{l-1}) \quad (계층별\;오디오\;특징)
+        $$
+        
+    2. feature map의 너비와 높이는 절반으로 줄이고 차원을 두배로 늘리는 conv처럼 계산된다.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>3. Separation Decoder</strong><br></div>
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/ac12218e-0c7d-4814-8206-536fd9bd8b1b)
+
+1. 일단 sound mixture를 STFT로 복소 스펙트로그램을 얻는다.  그럼 위 그림에서 보이는 Linear spectrogram을 얻는것이다. 공식은 다음과 같다.
+    
+    $$
+    \hat{X} = STFT(\tilde{x}) = |\hat{X}|e^{j\angle\hat{X}}
+    $$
+    
+    $$
+    |\hat{X}| \quad (\text{사운드 혼합의 진폭 스펙트로그램})\\
+    e^{j\angle\hat{X}}\quad (\text{사운드 혼합의 phase 스펙트로그램})
+    $$
+    
+2. 동시다발적으로 위의 QueryNetwork에서 얻은 c와 Audio Encoder에서 나온 특징을 결합해서 Decoder 아키텍처의 input을 만든다. 이 decoder 아키텍쳐는 encoding하고 decoding할때 중간에 skip connection이 있는 UNet의 구조를 따른다. 아무튼 decoder block에 input으로 들어갈때 Query Network와 Audio Encoder에서 나온 값을 조정해서 만든 값이 다음과 같으며 FiLM(Feature-wise Linear Modulation) 기법을 이용한다. 
+    
+    $$
+    H_c^l = \gamma_l(c)H_e^l + \beta_l(c)
+    $$
+    
+    $$
+    \gamma_l(c) \quad (\text{조건 임베딩에 의해 조정된 계수})\\
+    \beta_l(c) \quad (\text{조건 임베딩에 의해 조정된 편향})\\
+    H_e^l \quad (\text{audio encoder에서 나온 특징})\\
+    $$
+    
+3. 그럼 2의 단계에서 Query랑 Audio랑 조정해서 나온 값을 각 layer마다 만들 수 있는데 이 값을 이제 Decoder block에 넣을거다. 여기서 skip connection을 이용해서 넣을거라서 식은 다음과 같다. 
+    
+    $$
+    H_d^1 = f_{aggr}^1(H_c^L) + H_c^{L-1}\\
+    H_d^l = f_{aggr}^l(H_d^{l-1}) + H_c^{L-l}
+    $$
+    
+    $$
+    f_{aggr}^l(\cdot) \quad (\text{decoder block의 함수라고 생각하면 됨})
+    $$
+    
+    - 그리고 마지막 3개의 layer는 패치확장모듈을 포함해서 특징 수를 증가시키고 차원을 줄여서 stft랑 크기를 맞춰준다.
+4. 마지막으로 나온 특징은 역패치 임베딩 과정을 거친다. 이 과정에서 transpose convolution과 reshape을 한다. 패치임베딩의 역과정으로 Mel-spectrogram의 시간 주파수 공간으로 되돌려서 그림에서 보이는 Aggregated feature로 만들어준다.
+    
+    $$
+    H_d = \text{Reshape}'(\text{InversePatchEmbed}(H_d^L)).
+    $$
+    
+5. 그렇게 나온 tensor랑 stft로 만든 값을 concat시킨뒤 transformer layer를 통과시켜서 시그모이드를 거쳐 mask를 만든다. 
+    
+    $$
+    M = \text{Sigmoid}(\text{MaskNet}(\text{Concat}(H_d, |\tilde{X}|))).
+    $$
+    
+    $$
+    \text{MaskNet}\;\;\;(\text{transformer로 구성된 N개의 layer})
+    $$
+    
+6. 마지막으로 inverse stft로 타켓 음원을 추출한다. 
+    
+    $$
+    \tilde{x} = \text{ISTFT}(M \odot |\tilde{X}|e^{j\angle\tilde{X}}),
+    
+    $$
+    
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>4. LoRA Tuning</strong><br></div>
+
+LoRa Tuning은 자연어 처리(NLP)에서 처음 제안된 파라미터 효율적인 파인튜닝 방법으로, 큰 언어 모델들을 새로운 하위 태스크에 적응시키기 위한 방법이다.  
+
+원래는 아래와 같이 gradient를 update를 하는데 
+
+$$
+h' = (W_0 + \Delta W)h
+$$
+
+LoRA에서는 저행렬 증분 행렬인 B와 A만이 업데이트되어서 훨씬 계산량이 적어지고 catastrophic forgetting를 방지하는데 도움이 된다. 공식은 아래와 같다.
+
+$$
+W_0 + \Delta W = W_0 + BA,
+$$
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>5. Loss Function</strong><br></div>
+
+두개의 criterion으로 loss가 만들어진다. Loss의 최종식은 다음과 같다.
+
+$$
+\mathcal{L}(\hat{x}, x) = -\lambda \text{SDR}(\hat{x}, x) - (1 - \lambda)\text{SISDR}(\hat{x}, x)
+$$
+
+- SDR (Signal-to-Distortion Ratio, 신호 대비 잡음비)
+    - 예측된 신호와 참 신호의 비율을 데시벨 단위로 측정한 값
+        
+        $$
+        \text{SDR}(\hat{x}, x) = 10 \log_{10} \left(\frac{||x||^2}{||x - \hat{x}||^2}\right)
+        $$
+        
+- SISDR (Scale-Invariant Signal-to-Distortion Ratio, 규모 불변 신호 대비 왜곡 비율)
+    - SDR과 유사하지만, 예측된 신호의 스케일(크기)이 달라지더라도 일관된 측정값을 유지
+    
+    $$
+    \text{SISDR}(\hat{x}, x) = 10 \log_{10} \left(\frac{||\hat{x}^\top x||^2}{||x||^2 ||x - \hat{x}||^2}\right)
+    $$
+    
+
+# **&lt;  EXPERIMENTAL SETUP &gt;**
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Datasets</strong><br></div>
+
+1. **training data**
+    1. AudioCaps
+        1. 오디오캡스(AudioCaps)를 사용하여 모델 학습을 위한 사운드 믹스를 제작
+        2.  AudioCaps는 약 5만 개의 오디오-텍스트 쌍으로 구성
+        3. 오디오 클립은 32kHz로 샘플링되며, 각 오디오 클립의 길이는 약 10초
+        4. 두 개의 오디오 클립을 무작위로 선택하여 사운드 믹스를 생성
+        5. 과적합을 방지하기 위해, 쿼리 오디오 샘플에 속도 섭동 및 시간 주파수 마스킹을 포함한 증강을 수행
+        6. 모든 사운드 혼합은 훈련 데이터의 다양성을 높이기 위해 즉석에서 생성
+2. **test data**
+    1. AudioCaps
+        1. 데이터: 957개 오디오 클립, 각 클립당 5개의 오디오 캡션 있음. 첫 번째 캡션을 언어 쿼리로 사용.
+        2. 혼합물: 총 4,785개 평가 사운드 혼합물 생성.
+    2. AudioSet
+        1. 데이터: 2,084,320개의 주석이 달린 오디오 클립, 527개의 사운드 클래스 포함.
+        2. 사용가능한 클립: 평가 분할에서 20,371개 클립 중 18,869개 다운로드 사용 가능.
+        3. 혼합물: 총 18,869개 평가 사운드 혼합물 생성.
+    3. ESC-50
+        1. 데이터: 2,000개의 오디오 클립, 50개의 환경 사운드 클래스 포함.
+        2. 혼합물: 총 6,500개 평가 사운드 혼합물 생성, 500개 클립은 쿼리 오디오 샘플로 선택 및 제외.
+    4. FSDKaggle2018
+        1. 데이터: 11,073개 오디오 파일, 41개 라벨 포함.
+        2. 혼합물: 공식 테스트 분할에서 1,600개 클립을 사용하여 총 8,000개 평가 사운드 혼합물 생성.
+    5. MUSIC21
+        1. 데이터: 1,164개 동영상, 21개 악기 음악 클래스 포함. 사용 가능한 동영상은 1,046개.
+        2. 혼합물: 총 19,805개의 10초 길이 오디오 클립을 통해 19,805개 평가 사운드 혼합물 생성
+3. **평가 과정**
+    - 혼합 생성: 각 데이터셋마다 평가 사운드 혼합물은 한 개의 대상 소스와 1개 또는 5개의 임의 선택된 간섭 소음을 0dB의 신호 대 잡음비(SNR)로 혼합하여 생성된다.
+    - 라벨 변환: 라벨이 주석된 데이터셋의 경우, 라벨을 “The sound of” 접두사를 추가하여 언어 설명으로 변환한다.
+    - 쿼리 샘플: ESC-50, FSDKaggle2018, MUSIC21의 경우, 제안된 접근 방식의 다중모드 쿼리된 TSE 능력을 평가하기 위해 각 사운드 클래스마다 10개의 오디오 클립을 임의로 선택하여 쿼리 오디오 샘플로 사용한다. 이 선택된 쿼리 샘플은 정보 유출을 방지하기 위해 평가 혼합물 생성에는 사용되지 않는다.
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Implementation Details</strong><br></div>
+
+1. 스펙트로그램 추출:
+    1. 오디오 클립 길이: 10초
+    2. 샘플링 레이트: 32kHz
+    3. 윈도우 길이: 1024
+    4. 홉 길이: 320 (선형 스펙트로그램 추출), 480 (Fourier 변환 계산)
+    5. Fourier 변환: 1024 bins
+    6. 결과 스펙트로그램: 513 주파수 bins 및 1001 시간 프레임
+    7. Mel 스펙트로그램: 64 Mel bins
+2. 모델 구조:
+    1. 모델 하이퍼파라미터: [m1, m2, m3, m4] = [2, 2, 12, 2], [m′1, m′2, m′3, m′4] = [1, 1, 1, 1]
+        1. 그림에 나와있다.
+    2. MaskNet 레이어: N = 3
+    3. 학습 가능한 부분: 분리 디코더와 CLAP 오디오 인코더에 적용된 LoRA 모듈
+3. LoRA 모듈:
+    1. 적용 대상: 쿼리, 키, 값, 출력 투영 레이어 (모든 멀티헤드 어텐션 모듈 내)
+    2. LoRA의 랭크: 16
+4. 최적화 및 학습 속도:
+    1. 옵티마이저: AdamW
+    2. 학습률: 1e-4에서 시작하여 5e-6까지 지수적 감소
+    3. 감쇠 계수: 0.3 (검증 손실이 5연속 에포크 동안 감소하지 않을 때 적용)
+    4. 배치 크기: 32
+5. 훈련 설정:
+    1. 훈련 에포크 수: 총 150 에포크
+    2. 정밀도: brain float 16 mixed precision
+    3. GPU: RTX 3090, 24GB GPU 메모리 1
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>Evaluation metrics</strong><br></div>
+
+일단 각 기호가 무엇을 의미하는지 정리하자
+
+$$
+\tilde{x}\quad (\text{추출된 사운드 소스})\\
+$$
+
+$$
+\hat{x} \quad (\text{사운드 혼합물})\\
+$$
+
+$$
+x \quad (\text{원본(ground truth) 사운드 소스})\\
+$$
+
+두가지  평가지표 사용
+
+- SDRI (Signal-to-Distortion Ratio Improvement , 신호 대 잡음비 향상)
+    
+    $$
+    \text{SDRi}(\tilde{x}, \hat{x}, x) = \text{SDR}(\tilde{x}, x) - \text{SDR}(\hat{x}, x)
+    $$
+    
+- SISDRI (Scale-Invariant Signal-to-Distortion Ratio Improvement, 척도 불변 신호 대 잡음비 향상)
+    
+    $$
+    \text{SISDRi}(\tilde{x}, \hat{x}, x) = \text{SISDR}(\tilde{x}, x) - \text{SISDR}(\hat{x}, x)
+    $$
+    
+
+# **&lt;  RESULT AND ANALYSIS &gt;**
+
+
+### 1. Language-Queried TSE Performance Evaluation
+
+1. 모델 비교 대상 
+    1. **LassNet**
+        1. Language-Queried Sound Separation Model
+        2. 다중 모달 대조 사전 훈련 모델을 사용하지 않음.
+        3. BERT 기반 언어 쿼리 네트워크와 분리 네트워크를 동시에 훈련 필요.
+    2. **AudioSep**
+        1. Language-Queried Sound Separation Model
+        2. 본 논문 이전의 sota모델
+        3. LASS를 개선하여 대조 사전 훈련된 모델의 텍스트 인코더를 쿼리 네트워크로 통합.
+        4. LASS보다 훨씬 많은 훈련 데이터 사용으로 성능 향상.
+    3. **Waveformer**
+        1. Label-Queried Sound Separation Model
+        2. 라벨 쿼리 TSE 모델로, FSDKaggle2018에서만 TSE 수행 가능.
+        3. 범용 사운드 분리 달성에 있어 큰 격차를 드러냄.
+    4. **CLAPSep**
+        1. label queried, hybrid queried Sounds Separation Model
+        2. 본 논문이 제안한 모델
+        3. hybrid방식과 text방식이 있는데 query에 text만 넣고 hybrid는 query에 sound도 추가한 것으로 분류
+2. 평가 방법.
+    - 공개된 모델 가중치를 가져와서 성능 표시 (+로 표시)
+    - 더 공정한 비교를 위해 제안된 모델을 훈련데이터를 동일하게 해서 재구현
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/42ff04f9-b675-4dbe-a877-69b4130167e7)
+
+3. 평가 결과
+    1.  Waveformer
+        1. 특정 데이터셋(FSDKaggle2018)에 대해서만 작동하는 제한이 있다.
+    2. Lass 
+        1. 원래 LASS 모델은 비교적 작은 데이터셋으로 훈련되었지만, 기대한 성능을 보여주지 못한다. 
+        2. 하지만 같은 데이터셋으로 새롭게 훈련시킨 LASS는 성능이 크게 개선되었으나, 여전히 제안된 CLAPSep 모델에 비해서는 부족하다. 
+    3. AudioSep
+        1. CLAPSep와 같은 데이터로 다시 훈련했을 때, 성능이 눈에 띄게 떨어졌는데, 이는 특히 다양한 데이터셋을 사용한 평가에서 두드러졌다. 
+    4. CLAPSep 
+        1. 대부분의 평가 벤치마크에서 최신 SOTA 성능을 달성한다. 
+4. 해석
+    1. TSE 모델의 일반화 능력은 대량의 데이터보다는 사전 훈련된 인코더의 효율적인 재사용에서 비롯될 수 있음을 시사한다.
+    2. 긍정적 및 부정적 쿼리의 조합은 TSE 성능을 최적화하는 데 기여한다.
+    3. 사전 훈련된 모델에서 학습된 지식을 활용하는 것이 작은 데이터셋에서도 효과적인 모델 학습에 도움이 됨을 보여준다.
+5. 추가적인 시각화 
+    1. 보다 포괄적인 비교를 위해 5개의 평가데이터세트에 대한 SNRi 및 SISNRi의 분포를 아래에 시각화 한다. 본 논문이 제안한 모델이 성능이 더 좋은 것을 볼 수 있다.
+        
+        ![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/ed28331a-7241-4927-ac87-fb474303602c)
+        
+
+### 2. Multimodality-Queried TSE Performance Evaluation
+
+대부분의 벤치마크에서 좋은 성능을 보였지만 pretrained된 CLAP text encoder에서 나온 vector로 이 성능이 나왔는지 아는것이 중요하다.  
+
+그래서 query에 CLAP audio encoder의 음원 vector를 넣어서 비교해보려고 한다. 이 비교를 위해서 audio queried TSE model인 USS를 비교군으로 실험한다. 
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/33caf72e-c9c0-44b0-bc94-6b566a145f90)
+
+성능은 위와 같으면 여기서 Shots은 같은 사운드 클래스에 있는 query sample 개수를 의미한다. 여기서 두개 이상이면 평균을 내서 하나의 vector로 만들어 주는것을 볼 수 있다. 
+
+결론을 말하자면 **query에 audio와 text를 넣을때 hybrid로 훈련시킨 모델이 제일 효과적**이라는 것을 알 수 있다. 
+
+그리고 추가적으로 audio query에 대한 shots과 duration에 대한 실험결과도 아래와 같이 시각화하였다.
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/38a5285c-0e8e-4262-ab0c-276b12e22253)
+
+3초일때 그리고 shots이 10개일때 전반적으로 성능이 좋다고 한다.
+
+### 3. Zero-Shot Generalizability Evaluation
+
+제안된 방법의 제로샷 일반화 능력, 즉 훈련 단계에서 보지 못한 클래스에 대한 성능을 평가하기 위한 실험을 수행한다. 
+
+평가 순서는 다음과 같다. 
+
+1. **훈련 세트 선택**: AudioCaps 대신 라벨이 주석된 AudioSet_balanced_train 사용
+2. **보지 못한 클래스 선택**: 이전 연구를 따라 10개의 사운드 클래스를 보지 못한 클래스로 선정하고, 이들 클래스에 속하는 모든 오디오 클립을 훈련 세트에서 제외
+3. **평가 사운드 혼합물 생성**: 평가 세트 각각에서 50개의 오디오 클립을 무작위로 선택하여, 총 500개의 오디오 클립을 대상 소스로 사용. 각 대상 소스에 대해 5개의 간섭 소음을 무작위로 선택하고 0dB SNR로 혼합하여 총 2,500개의 사운드 혼합물 생성.
+4. **평가**: "보지 못한(Unseen)" 상황과 "본(Seen)" 상황을 비교하기 위해 동일한 모델을 AudioSet_balanced_train 전체에 대해 훈련시키고, 결과를 "Seen"으로 표시하여 비교.
+5. 즉 10개의 category를 제외하고 train시킨게 Unseen이고 다 포함해서 train하게 seen이다. 그 결과는 아래와 같다. 
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/2a144630-d917-4513-8063-d507d591725b)
+
+제로 샷에도 뛰어나다는 것을 알 수 있다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>4. Ablation Study</strong><br></div>
+
+설계 구성 요소의 영향을 평가하기 위한 추가적인 Ablation study를 진행한다. 
+
+1.  CLAP 오디오 인코더가 성능에 미치는 영향을 평가
+2. pretrained된 모델이 아닌 초기화된 모델 사용
+3. Lora 튜닝이 성능이 미치는지 아닌지 
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/bc1e983e-a96a-43de-9380-ddba7e7a8b3b)
+
+진행한 결과 각 요소들이 다 의미있다고 증명한다. 
+
+<div style="font-size: 20px; margin: 5px 0;"><strong>5. Visualization Analysis</strong><br></div>
+
+1. t-SNE visualization
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/d0eec92a-181f-4c07-ba8e-4a98871016c3)
+
+긍정 및 부정 사용자 쿼리를 동시에 사용하여 추출한 음원의 클러스터링이 더 조밀하게 형성되어 풍부한 시맨틱 정보가 TSE 시스템의 효율성을 향상시킨다는 것을 알 수 있다.
+
+1. Spectrogram Visualization
+
+![image](https://github.com/Aisaka0v0/CLAPSep/assets/89252263/57f4651b-0c05-4451-b752-834ed2eaa364)
+
+데모 페이지도 있다. 
+
+[https://aisaka0v0.github.io/CLAPSep_demo/](https://aisaka0v0.github.io/CLAPSep_demo/) 
+
+# **&lt;  DISCUSSION AND CONCLUSION &gt;**
+
+이 연구에서는 다음과 같은 주요 내용을 정리할 수 있다.
+
+1. **연구 목적**: 실제 세계의 다중 소스 사운드 혼합물에서 원하는 소리를 추출하고 원치 않는 소리원을 억제하는 쿼리 조건부 타겟 사운드 추출(TSE)을 달성하기 위함이다.
+2. **전략**: 기존 접근 방식이 처음부터 모델을 훈련시키는 데 비해, 사전 훈련된 모델에 내재된 선행 지식을 활용하는 새로운 전략을 사용한다. CLAP 기반의 CLAPSep 모델을 통해 데이터와 계산적으로 효율적인 방식으로 쿼리 조건부 TSE를 구현한다.
+3. **기여**:
+    - 사전 훈련된 CLAP 모델로부터 능력을 상속 받아 효율적인 TSE 성능 달성.
+    - 언어 쿼리와 오디오 쿼리 샘플 모두를 처리할 수 있는 다중 모달 훈련 전략 도입.
+    - 타겟 사운드 추출 및 비타겟 사운드 억제 성능을 크게 향상시키는 부정적 쿼리의 포함.
+4. **성과**:
+    - 다양한 벤치마크를 통한 평가에서 최신 기술(TSE) 성능 달성.
+    - 보지 못한 사운드 클래스를 포함한 제로샷 실험을 통해 강력한 일반화 능력 입증.
+5. **고려할 제약 사항**:
+    - CLAPSep 모델은 비인과적이어서 실시간 스트리밍 TSE 애플리케이션에는 적합하지 않음.
+    - 타겟 사운드 소스의 위상 추정을 위해 사운드 혼합물의 위상을 사용함으로써 발생할 수 있는 한계. 향후 연구에서 신경망을 이용한 위상 잔여물 추정 통합을 통해 성능 개선 가능.
+
+요약하자면, 이 연구는 쿼리 조건부 타겟 사운드 추출에 있어 사전 훈련된 모델의 활용, 혁신적 쿼리 전략, 다중 모달 훈련을 통한 혁신적 접근 방식을 제시하며, 실제 세계 애플리케이션에 다재다능하고 효율적인 해결책을 제공한다.

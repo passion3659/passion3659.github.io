@@ -18,9 +18,9 @@ entries_layout: grid
 
   <h1 style="font-size: 40px; margin-bottom: 10px;">Research Interest</h1>
   <ul style="list-style-type: none; padding: 0;">
-    <li style="font-size: 25px; margin-bottom: 10px;"><span style="content: '•'; color: #555; font-weight: bold; margin-right: 5px;">•</span> Processing and Analyzing 3D Point Cloud Data</li>
+    <li style="font-size: 25px; margin-bottom: 10px;"><span style="content: '•'; color: #555; font-weight: bold; margin-right: 5px;">•</span> Speech recognition</li>
     <li style="font-size: 25px; margin-bottom: 10px;"><span style="content: '•'; color: #555; font-weight: bold; margin-right: 5px;">•</span> Natural Language Processing(NLP)</li>
-    <li style="font-size: 25px; margin-bottom: 10px;"><span style="content: '•'; color: #555; font-weight: bold; margin-right: 5px;">•</span> 3D Object Localization in RGB-D Scans using Natural Language</li>
+    <li style="font-size: 25px; margin-bottom: 10px;"><span style="content: '•'; color: #555; font-weight: bold; margin-right: 5px;">•</span> Language-queried audio source separation</li>
   </ul><br><br><br>
 
     <h1 style="font-size: 40px; margin-bottom: 10px;">Certificate & Award</h1>
